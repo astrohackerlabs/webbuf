@@ -287,21 +287,43 @@ AES-CBC + SHA-256 HMAC (Encrypt-then-MAC).
 
 Construction: `HMAC_SHA256 (32 bytes) || IV (16 bytes) || ciphertext`
 
-- [ ] Web Crypto interop: encrypt with acs2, decrypt with pure Web Crypto
+- [x] Web Crypto interop: encrypt with acs2, decrypt with pure Web Crypto
   - Manually parse `HMAC || IV || ciphertext`
   - Verify HMAC with `crypto.subtle.verify()`
   - Decrypt with `crypto.subtle.decrypt()` (AES-CBC)
-- [ ] Web Crypto interop: encrypt with pure Web Crypto, decrypt with acs2
+- [x] Web Crypto interop: encrypt with pure Web Crypto, decrypt with acs2
   - Encrypt with `crypto.subtle.encrypt()` (AES-CBC)
   - Compute HMAC with `crypto.subtle.sign()`
   - Assemble as `HMAC || IV || ciphertext`
   - Verify acs2 can decrypt
-- [ ] Single-byte modification to MAC portion causes decryption failure
-- [ ] Single-byte modification to IV portion causes decryption failure
-- [ ] Single-byte modification to ciphertext portion causes decryption failure
-- [ ] Truncated ciphertext is rejected
+- [x] Single-byte modification to MAC portion causes decryption failure
+- [x] Single-byte modification to IV portion causes decryption failure
+- [x] Single-byte modification to ciphertext portion causes decryption failure
+- [x] Truncated ciphertext is rejected
 - [x] Wrong key causes decryption failure (implemented)
 - [x] Tampered ciphertext causes failure (implemented)
+
+Audit tests: `ts/npm-webbuf-acs2/test/audit.test.ts` (40 tests)
+
+Tests cover:
+- Construction verification (HMAC || IV || ciphertext structure)
+- HMAC computed over IV || ciphertext (Encrypt-then-MAC pattern verified)
+- Cross-verification with manual construction using @webbuf/aescbc and @webbuf/sha256
+- **Web Crypto interoperability (bidirectional)**:
+  - Encrypt with acs2, verify HMAC and decrypt with Web Crypto
+  - Encrypt with Web Crypto, assemble format, decrypt with acs2
+  - HMAC byte-for-byte match with Web Crypto
+- HMAC tampering detection (first, middle, last byte, all zeros)
+- IV tampering detection (first, last byte)
+- Ciphertext tampering detection (first, middle, last byte)
+- Length validation (minimum 64 bytes, truncated, appended bytes rejected)
+- Key sensitivity (wrong key, single-bit difference)
+- Round-trip tests (empty, single byte, various sizes up to 10KB, UTF-8)
+- IV handling (provided IV, random generation, different IVs)
+- Determinism verification
+- Output size verification for various plaintext sizes
+- Security properties (no plaintext leak, avalanche effect, Encrypt-then-MAC verified)
+- Edge cases (all zeros, all 0xFF, 100KB plaintext, zero key, 0xFF key)
 
 ### @webbuf/acs2dh
 
