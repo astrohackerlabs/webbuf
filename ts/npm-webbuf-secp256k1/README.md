@@ -13,7 +13,11 @@ npm install @webbuf/secp256k1
 ### Key Generation
 
 ```typescript
-import { publicKeyCreate, privateKeyVerify, publicKeyVerify } from "@webbuf/secp256k1";
+import {
+  publicKeyCreate,
+  privateKeyVerify,
+  publicKeyVerify,
+} from "@webbuf/secp256k1";
 import { FixedBuf } from "@webbuf/fixedbuf";
 
 // Generate random private key
@@ -72,7 +76,11 @@ const secretB = sharedSecret(bobPriv, alicePub);
 ### Key Addition
 
 ```typescript
-import { privateKeyAdd, publicKeyAdd, publicKeyCreate } from "@webbuf/secp256k1";
+import {
+  privateKeyAdd,
+  publicKeyAdd,
+  publicKeyCreate,
+} from "@webbuf/secp256k1";
 import { FixedBuf } from "@webbuf/fixedbuf";
 
 const priv1 = FixedBuf.fromRandom<32>(32);
@@ -89,16 +97,16 @@ const combinedPub = publicKeyAdd(pub1, pub2);
 
 ## API
 
-| Function | Description |
-|----------|-------------|
-| `privateKeyVerify(key: FixedBuf<32>): boolean` | Check if private key is valid |
-| `publicKeyVerify(key: FixedBuf<33>): boolean` | Check if public key is valid |
-| `publicKeyCreate(privKey: FixedBuf<32>): FixedBuf<33>` | Derive public key |
-| `privateKeyAdd(key1, key2): FixedBuf<32>` | Add two private keys |
-| `publicKeyAdd(key1, key2): FixedBuf<33>` | Add two public keys |
-| `sign(hash, privKey, k): FixedBuf<64>` | Sign with nonce k |
-| `verify(sig, hash, pubKey): boolean` | Verify signature |
-| `sharedSecret(privKey, pubKey): FixedBuf<33>` | ECDH shared secret |
+| Function                                               | Description                   |
+| ------------------------------------------------------ | ----------------------------- |
+| `privateKeyVerify(key: FixedBuf<32>): boolean`         | Check if private key is valid |
+| `publicKeyVerify(key: FixedBuf<33>): boolean`          | Check if public key is valid  |
+| `publicKeyCreate(privKey: FixedBuf<32>): FixedBuf<33>` | Derive public key             |
+| `privateKeyAdd(key1, key2): FixedBuf<32>`              | Add two private keys          |
+| `publicKeyAdd(key1, key2): FixedBuf<33>`               | Add two public keys           |
+| `sign(hash, privKey, k): FixedBuf<64>`                 | Sign with nonce k             |
+| `verify(sig, hash, pubKey): boolean`                   | Verify signature              |
+| `sharedSecret(privKey, pubKey): FixedBuf<33>`          | ECDH shared secret            |
 
 ## License
 

@@ -31,11 +31,11 @@ console.log(mac.toHex()); // 32-byte MAC
 
 ## API
 
-| Function | Description |
-|----------|-------------|
-| `blake3Hash(data: WebBuf): FixedBuf<32>` | Compute BLAKE3 hash |
-| `doubleBlake3Hash(data: WebBuf): FixedBuf<32>` | Compute hash of hash |
-| `blake3Mac(key: FixedBuf<32>, data: WebBuf): FixedBuf<32>` | Compute keyed MAC |
+| Function                                                   | Description          |
+| ---------------------------------------------------------- | -------------------- |
+| `blake3Hash(data: WebBuf): FixedBuf<32>`                   | Compute BLAKE3 hash  |
+| `doubleBlake3Hash(data: WebBuf): FixedBuf<32>`             | Compute hash of hash |
+| `blake3Mac(key: FixedBuf<32>, data: WebBuf): FixedBuf<32>` | Compute keyed MAC    |
 
 ## License
 

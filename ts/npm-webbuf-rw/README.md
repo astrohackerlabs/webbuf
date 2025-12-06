@@ -58,7 +58,7 @@ const hash = reader.readFixed<32>(32);
 const varInt = reader.readVarIntU64BE();
 
 // Check remaining
-reader.eof();       // true if at end
+reader.eof(); // true if at end
 reader.remainder(); // remaining bytes as WebBuf
 ```
 
@@ -66,28 +66,28 @@ reader.remainder(); // remaining bytes as WebBuf
 
 ### BufWriter
 
-| Method | Description |
-|--------|-------------|
-| `writeU8(val)` | Write 8-bit unsigned |
-| `writeU16BE(val)` | Write 16-bit big-endian |
-| `writeU32BE(val)` | Write 32-bit big-endian |
-| `writeU64BE(val)` | Write 64-bit big-endian |
-| `writeFixed(buf)` | Write fixed-size buffer |
+| Method                  | Description                   |
+| ----------------------- | ----------------------------- |
+| `writeU8(val)`          | Write 8-bit unsigned          |
+| `writeU16BE(val)`       | Write 16-bit big-endian       |
+| `writeU32BE(val)`       | Write 32-bit big-endian       |
+| `writeU64BE(val)`       | Write 64-bit big-endian       |
+| `writeFixed(buf)`       | Write fixed-size buffer       |
 | `writeVarIntU64BE(val)` | Write variable-length integer |
-| `toBuf()` | Get result as WebBuf |
+| `toBuf()`               | Get result as WebBuf          |
 
 ### BufReader
 
-| Method | Description |
-|--------|-------------|
-| `readU8()` | Read 8-bit unsigned |
-| `readU16BE()` | Read 16-bit big-endian |
-| `readU32BE()` | Read 32-bit big-endian |
-| `readU64BE()` | Read 64-bit big-endian |
-| `readFixed<N>(size)` | Read fixed-size buffer |
-| `readVarIntU64BE()` | Read variable-length integer |
-| `eof()` | Check if at end |
-| `remainder()` | Get remaining bytes |
+| Method               | Description                  |
+| -------------------- | ---------------------------- |
+| `readU8()`           | Read 8-bit unsigned          |
+| `readU16BE()`        | Read 16-bit big-endian       |
+| `readU32BE()`        | Read 32-bit big-endian       |
+| `readU64BE()`        | Read 64-bit big-endian       |
+| `readFixed<N>(size)` | Read fixed-size buffer       |
+| `readVarIntU64BE()`  | Read variable-length integer |
+| `eof()`              | Check if at end              |
+| `remainder()`        | Get remaining bytes          |
 
 ## License
 

@@ -32,11 +32,11 @@ console.log(mac.toHex()); // 32-byte HMAC
 
 ## API
 
-| Function | Description |
-|----------|-------------|
-| `sha256Hash(data: WebBuf): FixedBuf<32>` | Compute SHA-256 hash |
-| `doubleSha256Hash(data: WebBuf): FixedBuf<32>` | Compute SHA-256(SHA-256(data)) |
-| `sha256Hmac(key: WebBuf, message: WebBuf): FixedBuf<32>` | Compute HMAC-SHA256 |
+| Function                                                 | Description                    |
+| -------------------------------------------------------- | ------------------------------ |
+| `sha256Hash(data: WebBuf): FixedBuf<32>`                 | Compute SHA-256 hash           |
+| `doubleSha256Hash(data: WebBuf): FixedBuf<32>`           | Compute SHA-256(SHA-256(data)) |
+| `sha256Hmac(key: WebBuf, message: WebBuf): FixedBuf<32>` | Compute HMAC-SHA256            |
 
 ## License
 

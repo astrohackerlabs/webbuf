@@ -25,10 +25,10 @@ const doubleHash = doubleRipemd160Hash(data);
 
 ## API
 
-| Function | Description |
-|----------|-------------|
-| `ripemd160Hash(data: WebBuf): FixedBuf<20>` | Compute RIPEMD-160 hash |
-| `doubleRipemd160Hash(data: WebBuf): FixedBuf<20>` | Compute hash of hash |
+| Function                                          | Description             |
+| ------------------------------------------------- | ----------------------- |
+| `ripemd160Hash(data: WebBuf): FixedBuf<20>`       | Compute RIPEMD-160 hash |
+| `doubleRipemd160Hash(data: WebBuf): FixedBuf<20>` | Compute hash of hash    |
 
 ## License
 

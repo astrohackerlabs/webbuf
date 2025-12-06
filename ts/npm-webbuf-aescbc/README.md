@@ -35,10 +35,10 @@ console.log(decrypted.toUtf8()); // "Hello, world!"
 
 ## API
 
-| Function | Description |
-|----------|-------------|
-| `aescbcEncrypt(plaintext, aesKey, iv?)` | Encrypt with AES-CBC. IV prepended to output. |
-| `aescbcDecrypt(ciphertext, aesKey)` | Decrypt AES-CBC. Expects IV at start of ciphertext. |
+| Function                                | Description                                         |
+| --------------------------------------- | --------------------------------------------------- |
+| `aescbcEncrypt(plaintext, aesKey, iv?)` | Encrypt with AES-CBC. IV prepended to output.       |
+| `aescbcDecrypt(ciphertext, aesKey)`     | Decrypt AES-CBC. Expects IV at start of ciphertext. |
 
 ### Key Sizes
 

@@ -43,15 +43,16 @@ console.log(decrypted.toUtf8()); // "Hello Bob!"
 3. Encrypts/decrypts using ACB3 (AES-CBC + BLAKE3 MAC)
 
 Both parties can derive the same shared secret:
+
 - Alice: `sharedSecret(alicePriv, bobPub)`
 - Bob: `sharedSecret(bobPriv, alicePub)`
 
 ## API
 
-| Function | Description |
-|----------|-------------|
+| Function                                         | Description                   |
+| ------------------------------------------------ | ----------------------------- |
 | `acb3dhEncrypt(privKey, pubKey, plaintext, iv?)` | Encrypt with ECDH-derived key |
-| `acb3dhDecrypt(privKey, pubKey, ciphertext)` | Decrypt with ECDH-derived key |
+| `acb3dhDecrypt(privKey, pubKey, ciphertext)`     | Decrypt with ECDH-derived key |
 
 ## License
 

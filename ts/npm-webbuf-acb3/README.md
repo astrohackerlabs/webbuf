@@ -36,21 +36,23 @@ try {
 ## How It Works
 
 **Encryption:**
+
 1. Encrypts plaintext with AES-CBC (random IV)
 2. Computes BLAKE3 MAC over the ciphertext
 3. Returns: `MAC (32 bytes) || IV (16 bytes) || encrypted data`
 
 **Decryption:**
+
 1. Extracts and verifies the MAC
 2. Throws if MAC doesn't match (tampered data)
 3. Decrypts and returns plaintext
 
 ## API
 
-| Function | Description |
-|----------|-------------|
-| `acb3Encrypt(plaintext, key, iv?)` | Encrypt with MAC. Optional custom IV. |
-| `acb3Decrypt(ciphertext, key)` | Decrypt and verify. Throws on auth failure. |
+| Function                           | Description                                 |
+| ---------------------------------- | ------------------------------------------- |
+| `acb3Encrypt(plaintext, key, iv?)` | Encrypt with MAC. Optional custom IV.       |
+| `acb3Decrypt(ciphertext, key)`     | Decrypt and verify. Throws on auth failure. |
 
 ## License
 

@@ -1,5 +1,17 @@
 import { describe, test, it, expect } from "vitest";
-import { U8, U16BE, U32BE, U64BE, U128BE, U256BE, U16LE, U32LE, U64LE, U128LE, U256LE } from "../src/index.js";
+import {
+  U8,
+  U16BE,
+  U32BE,
+  U64BE,
+  U128BE,
+  U256BE,
+  U16LE,
+  U32LE,
+  U64LE,
+  U128LE,
+  U256LE,
+} from "../src/index.js";
 
 describe("U8", () => {
   it("should create a new U8 instance from number using the constructor", () => {
@@ -63,12 +75,12 @@ describe("U8", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u8 = U8.fromLEBuf(U8.fromBn(0xffn).toLEBuf().buf)
+    const u8 = U8.fromLEBuf(U8.fromBn(0xffn).toLEBuf().buf);
     expect(u8.bn).toBe(0xffn);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u8 = U8.fromBEBuf(U8.fromBn(0xffn).toBEBuf().buf)
+    const u8 = U8.fromBEBuf(U8.fromBn(0xffn).toBEBuf().buf);
     expect(u8.bn).toBe(0xffn);
   });
 });
@@ -135,12 +147,12 @@ describe("U16BE", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u16 = U16BE.fromLEBuf(U16BE.fromBn(0x0102n).toLEBuf().buf)
+    const u16 = U16BE.fromLEBuf(U16BE.fromBn(0x0102n).toLEBuf().buf);
     expect(u16.bn).toBe(0x0102n);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u16 = U16BE.fromBEBuf(U16BE.fromBn(0x0102n).toBEBuf().buf)
+    const u16 = U16BE.fromBEBuf(U16BE.fromBn(0x0102n).toBEBuf().buf);
     expect(u16.bn).toBe(0x0102n);
   });
 });
@@ -207,12 +219,12 @@ describe("U16LE", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u16 = U16LE.fromLEBuf(U16LE.fromBn(0x0102n).toLEBuf().buf)
+    const u16 = U16LE.fromLEBuf(U16LE.fromBn(0x0102n).toLEBuf().buf);
     expect(u16.bn).toBe(0x0102n);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u16 = U16LE.fromBEBuf(U16LE.fromBn(0x0102n).toBEBuf().buf)
+    const u16 = U16LE.fromBEBuf(U16LE.fromBn(0x0102n).toBEBuf().buf);
     expect(u16.bn).toBe(0x0102n);
   });
 });
@@ -279,12 +291,12 @@ describe("U32BE", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u32 = U32BE.fromLEBuf(U32BE.fromBn(0x01020304n).toLEBuf().buf)
+    const u32 = U32BE.fromLEBuf(U32BE.fromBn(0x01020304n).toLEBuf().buf);
     expect(u32.bn).toBe(0x01020304n);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u32 = U32BE.fromBEBuf(U32BE.fromBn(0x01020304n).toBEBuf().buf)
+    const u32 = U32BE.fromBEBuf(U32BE.fromBn(0x01020304n).toBEBuf().buf);
     expect(u32.bn).toBe(0x01020304n);
   });
 });
@@ -351,12 +363,12 @@ describe("U32LE", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u32 = U32LE.fromLEBuf(U32LE.fromBn(0x01020304n).toLEBuf().buf)
+    const u32 = U32LE.fromLEBuf(U32LE.fromBn(0x01020304n).toLEBuf().buf);
     expect(u32.bn).toBe(0x01020304n);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u32 = U32LE.fromBEBuf(U32LE.fromBn(0x01020304n).toBEBuf().buf)
+    const u32 = U32LE.fromBEBuf(U32LE.fromBn(0x01020304n).toBEBuf().buf);
     expect(u32.bn).toBe(0x01020304n);
   });
 });
@@ -423,12 +435,16 @@ describe("U64BE", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u64 = U64BE.fromLEBuf(U64BE.fromBn(0x0102030405060708n).toLEBuf().buf)
+    const u64 = U64BE.fromLEBuf(
+      U64BE.fromBn(0x0102030405060708n).toLEBuf().buf,
+    );
     expect(u64.bn).toBe(0x0102030405060708n);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u64 = U64BE.fromBEBuf(U64BE.fromBn(0x0102030405060708n).toBEBuf().buf)
+    const u64 = U64BE.fromBEBuf(
+      U64BE.fromBn(0x0102030405060708n).toBEBuf().buf,
+    );
     expect(u64.bn).toBe(0x0102030405060708n);
   });
 });
@@ -495,12 +511,16 @@ describe("U64LE", () => {
   });
 
   it("should convert from LE buffer (not fixedbuf)", () => {
-    const u64 = U64LE.fromLEBuf(U64LE.fromBn(0x0102030405060708n).toLEBuf().buf)
+    const u64 = U64LE.fromLEBuf(
+      U64LE.fromBn(0x0102030405060708n).toLEBuf().buf,
+    );
     expect(u64.bn).toBe(0x0102030405060708n);
   });
 
   it("should convert from BE buffer (not fixedbuf)", () => {
-    const u64 = U64LE.fromBEBuf(U64LE.fromBn(0x0102030405060708n).toBEBuf().buf)
+    const u64 = U64LE.fromBEBuf(
+      U64LE.fromBn(0x0102030405060708n).toBEBuf().buf,
+    );
     expect(u64.bn).toBe(0x0102030405060708n);
   });
 });
