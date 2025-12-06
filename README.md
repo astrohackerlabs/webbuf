@@ -1,334 +1,445 @@
 # WebBuf
 
-WebBuf is a modern implementation of "Buffer", the node.js library, written in
-TypeScript and Rust/WASM. We give up backwards compatibility for modern
-convenience and speed. Please see the readme for the specific language for more
-information.
-
-- [WebBuf (TypeScript)](./ts/npm-webbuf/README.md)
-- [WebBuf (Rust)](./rs/webbuf/README.md)
-
-## WebBuf (TypeScript)
-
-`WebBuf` is a powerful, flexible class that extends JavaScript's `Uint8Array` to
-provide additional functionality for handling binary data. It includes methods
-for manipulating binary data, converting to and from different formats (e.g.,
-base64, hex, strings), and reading/writing values in both little-endian and
-big-endian formats. This library is ideal for applications that need efficient
-and low-level control over binary data, like encoding/decoding or working with
-protocols. It also supports "fixed-size" buffers with the `FixedBuf` class,
-which enforces a specific buffer size at compile-time.
-
-Finally, the base64 and hex conversion methods are written in rust and built to
-WebAssembly for performance. They are about five times faster than pure
-JavaScript implementations for large data (~ 10 MB).
-
-## Features
-
-- Extended `Uint8Array` with extra methods for binary manipulation.
-- Conversion methods: supports Base64, Hex, Strings, and arrays.
-- Efficient concatenation and allocation methods.
-- Clone and copy functionality for working with buffers.
-- Support for reading and writing unsigned and signed integers in both Little
-  Endian (LE) and Big Endian (BE) formats, including 8-bit, 16-bit, 32-bit,
-  64-bit, 128-bit, and 256-bit integers.
-- Utility methods like `compare`, `equals`, `fill`, and more.
+WebBuf is a modern buffer library for TypeScript/JavaScript with
+Rust/WASM-optimized cryptographic operations. It provides a complete toolkit for
+binary data manipulation, encoding/decoding, fixed-size buffers, cryptographic
+hashing, elliptic curve operations, and authenticated encryption.
 
 ## Installation
-
-Install via npm:
 
 ```bash
 npm install webbuf
 ```
 
-## Usage
+Or install individual packages:
 
-### Basic Usage
-
-```typescript
-import { WebBuf } from "webbuf";
-
-// Allocating a buffer
-const buf = WebBuf.alloc(10);
-
-// Filling the buffer
-buf.fill(0);
-
-// Working with base64
-const base64Str = buf.toBase64();
-const decodedBuf = WebBuf.fromBase64(base64Str);
-
-// Cloning a buffer
-const clonedBuf = buf.clone();
-
-// Comparing buffers
-const anotherBuf = WebBuf.alloc(10);
-console.log(buf.equals(anotherBuf)); // false
+```bash
+npm install @webbuf/webbuf @webbuf/fixedbuf @webbuf/sha256 # etc.
 ```
 
-### Conversion Examples
+## Package Overview
 
-- **String to WebBuf**:
+| Package             | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `@webbuf/webbuf`    | Core `WebBuf` class - extended Uint8Array with hex/base64 encoding |
+| `@webbuf/fixedbuf`  | `FixedBuf<N>` - compile-time sized buffer wrapper                  |
+| `@webbuf/numbers`   | Fixed-size integers (U8, U16BE, U32LE, U64BE, U128, U256, etc.)    |
+| `@webbuf/rw`        | `BufReader` and `BufWriter` for sequential binary I/O              |
+| `@webbuf/blake3`    | BLAKE3 hash and keyed MAC                                          |
+| `@webbuf/sha256`    | SHA-256 hash and HMAC-SHA256                                       |
+| `@webbuf/ripemd160` | RIPEMD-160 hash                                                    |
+| `@webbuf/secp256k1` | ECDSA signatures and ECDH key exchange                             |
+| `@webbuf/aescbc`    | AES-CBC encryption (no authentication)                             |
+| `@webbuf/acb3`      | AES-CBC + BLAKE3 MAC (authenticated encryption)                    |
+| `@webbuf/acb3dh`    | ACB3 + ECDH key exchange                                           |
 
-  ```typescript
-  const buf = WebBuf.fromString("Hello, World!");
-  console.log(buf.toString()); // Outputs: Hello, World!
-  ```
+---
 
-- **Hex to WebBuf**:
+## Core Classes
 
-  ```typescript
-  const hexBuf = WebBuf.fromHex("48656c6c6f");
-  console.log(hexBuf.toString()); // Outputs: Hello
-  ```
+### WebBuf
 
-- **Base64 to WebBuf**:
-
-  ```typescript
-  const base64Buf = WebBuf.fromBase64("SGVsbG8=");
-  console.log(base64Buf.toString()); // Outputs: Hello
-  ```
-
-### Reading and Writing Data
-
-- **Read/Write Integers**:
-
-  ```typescript
-  const buf = WebBuf.alloc(8);
-
-  // Writing a 32-bit little-endian integer
-  buf.writeUint32LE(123456, 0);
-
-  // Reading the value back
-  const val = buf.readUint32LE(0);
-  console.log(val); // Outputs: 123456
-  ```
-
-- **Working with BigInt**:
-
-  ```typescript
-  const buf = WebBuf.alloc(16);
-
-  // Writing a 128-bit little-endian BigInt
-  buf.writeBigUint128LE(0x1234567890abcdef1234567890abcdefn, 0);
-
-  // Reading the value back
-  const bigVal = buf.readBigUint128LE(0);
-  console.log(bigVal.toString(16)); // Outputs: 1234567890abcdef1234567890abcdef
-  ```
-
-## API Reference
-
-### Static Methods
-
-- **`WebBuf.concat(list: Uint8Array[]): WebBuf`**\
-  Concatenates a list of `Uint8Array` or `WebBuf` into a single `WebBuf`.
-
-- **`WebBuf.alloc(size: number): WebBuf`**\
-  Allocates a new `WebBuf` of the specified size.
-
-- **`WebBuf.fromUint8Array(buffer: Uint8Array): WebBuf`**\
-  Returns a `WebBuf` that is a view of the same data as the input `Uint8Array`.
-
-- **`WebBuf.fromArray(array: number[]): WebBuf`**\
-  Creates a `WebBuf` from an array of numbers.
-
-- **`WebBuf.fromString(str: string): WebBuf`**\
-  Converts a string into a `WebBuf`.
-
-- **`WebBuf.fromHex(hex: string): WebBuf`**\
-  Converts a hex string to a `WebBuf`.
-
-- **`WebBuf.fromBase64(b64: string): WebBuf`**\
-  Converts a base64 string into a `WebBuf`.
-
-- **`WebBuf.from(source, mapFn?, thisArg?): WebBuf`**\
-  Overrides the `Uint8Array.from` method to return a `WebBuf`.
-
-### Instance Methods
-
-- **`toBase64(): string`**\
-  Converts the `WebBuf` to a base64 string.
-
-- **`toString(): string`**\
-  Converts the `WebBuf` to a UTF-8 string.
-
-- **`toHex(): string`**\
-  Converts the `WebBuf` to a hexadecimal string.
-
-- **`toArray(): number[]`**\
-  Converts the `WebBuf` to a standard array of numbers.
-
-- **`clone(): WebBuf`**\
-  Returns a copy of the `WebBuf`.
-
-- **`compare(other: WebBuf): number`**\
-  Compares two buffers lexicographically. Returns `0` if equal, `-1` if `this`
-  is smaller, or `1` if `this` is larger.
-
-- **`equals(other: WebBuf): boolean`**\
-  Returns `true` if the contents of two buffers are identical.
-
-- **`copy(target: WebBuf, targetStart?: number, sourceStart?: number, sourceEnd?: number): number`**\
-  Copies a section of `WebBuf` data to another `WebBuf`.
-
-### Reading/Writing Numbers
-
-- **Read and write unsigned integers** (8-bit, 16-bit, 32-bit, 64-bit, 128-bit,
-  256-bit) in both Little Endian (LE) and Big Endian (BE) formats:
-
-  - `readUintLE`, `readUintBE`
-  - `readUint8`, `readUint16LE`, `readUint16BE`
-  - `readUint32LE`, `readUint32BE`
-  - `readBigUint64LE`, `readBigUint64BE`
-  - `writeUintLE`, `writeUintBE`, `writeBigUint64LE`, `writeBigUint64BE`
-  - `writeBigUint128LE`, `writeBigUint128BE`
-  - `writeBigUint256LE`, `writeBigUint256BE`
-
-- **Read and write signed integers** in both Little Endian and Big Endian
-  formats:
-  - `readIntLE`, `readIntBE`
-  - `readInt8`, `readInt16LE`, `readInt16BE`
-  - `readInt32LE`, `readInt32BE`
-  - `readBigInt64LE`, `readBigInt64BE`
-  - `readBigInt128LE`, `readBigInt128BE`
-  - `readBigInt256LE`, `readBigInt256BE`
-
-## FixedBuf
-
-### FixedBuf
-
-The `FixedBuf` class is a specialized extension of the `WebBuf` class designed
-to manage buffers with a fixed size at compile-time. This class provides a way
-to work with fixed-size buffers in TypeScript, ensuring that the size of the
-buffer is known and enforced by the type system. It also offers various
-utilities for creating, encoding, and cloning fixed-size buffers, while
-retaining all the powerful features of `WebBuf`.
-
-#### Features:
-
-- **Fixed Size**: `FixedBuf` enforces the buffer size at both runtime and
-  compile-time, ensuring that all operations adhere to the specified buffer
-  size.
-- **Flexible Construction**: You can create a `FixedBuf` from existing buffers,
-  random data, hexadecimal strings, or Base64-encoded strings.
-- **Serialization Support**: Convert buffers to/from hexadecimal and Base64
-  formats.
-- **Cloning**: Create deep copies of fixed-size buffers.
-
-#### Constructor
+`WebBuf` extends `Uint8Array` with convenient methods for hex/base64 encoding,
+concatenation, comparison, and cloning. The encoding methods use Rust/WASM for
+performance.
 
 ```typescript
-constructor(size: N, buf: WebBuf)
+import { WebBuf } from "@webbuf/webbuf";
+
+// Creating buffers
+const buf1 = WebBuf.alloc(32);                    // 32 zero bytes
+const buf2 = WebBuf.alloc(16, 0xff);              // 16 bytes of 0xff
+const buf3 = WebBuf.fromHex("deadbeef");          // From hex string
+const buf4 = WebBuf.fromBase64("SGVsbG8=");       // From base64
+const buf5 = WebBuf.fromUtf8("Hello");            // From UTF-8 string
+const buf6 = WebBuf.fromArray([1, 2, 3, 4]);      // From number array
+
+// Converting to strings
+buf3.toHex();     // "deadbeef"
+buf4.toBase64();  // "SGVsbG8="
+buf5.toUtf8();    // "Hello"
+
+// Buffer operations
+const combined = WebBuf.concat([buf1, buf2, buf3]);
+const cloned = buf1.clone();
+const reversed = buf1.toReverse();
+const slice = buf1.slice(0, 16);
+
+// Comparison
+buf1.equals(buf2);   // false
+buf1.compare(buf2);  // -1, 0, or 1
 ```
 
-Creates a new `FixedBuf` of size `N`, wrapping around an existing `WebBuf`
-instance. The size is enforced at runtime, ensuring that the provided `WebBuf`
-matches the fixed size.
+**Key Methods:**
 
-#### Methods
+| Static Methods               | Description                   |
+| ---------------------------- | ----------------------------- |
+| `WebBuf.alloc(size, fill?)`  | Create buffer of given size   |
+| `WebBuf.concat(buffers[])`   | Concatenate multiple buffers  |
+| `WebBuf.fromHex(hex)`        | Parse hex string to buffer    |
+| `WebBuf.fromBase64(b64)`     | Parse base64 string to buffer |
+| `WebBuf.fromUtf8(str)`       | Encode UTF-8 string to buffer |
+| `WebBuf.fromArray(nums[])`   | Create from number array      |
+| `WebBuf.fromUint8Array(arr)` | Create from Uint8Array        |
 
-- **`buf: WebBuf`**\
-  Returns the underlying `WebBuf` instance.
+| Instance Methods         | Description                   |
+| ------------------------ | ----------------------------- |
+| `toHex()`                | Convert to hex string         |
+| `toBase64()`             | Convert to base64 string      |
+| `toUtf8()`               | Decode as UTF-8 string        |
+| `clone()`                | Create a copy                 |
+| `toReverse()`            | Create reversed copy          |
+| `slice(start?, end?)`    | Get slice (returns WebBuf)    |
+| `subarray(start?, end?)` | Get subarray (returns WebBuf) |
+| `equals(other)`          | Check equality                |
+| `compare(other)`         | Compare (-1, 0, 1)            |
 
-  ```typescript
-  get buf(): WebBuf;
-  ```
+---
 
-#### Static Methods
+### FixedBuf<N>
 
-- **`fromBuf<N>(size: N, buf: WebBuf): FixedBuf<N>`**\
-  Creates a `FixedBuf` from an existing `WebBuf` of a specific size.
-
-  ```typescript
-  const fixedBuf = FixedBuf.fromBuf(32, someWebBuf);
-  ```
-
-- **`alloc<N>(size: N, fill?: number): FixedBuf<N>`**\
-  Allocates a new `FixedBuf` of a fixed size, optionally filled with the
-  specified value. If no value is provided, the buffer will be initialized with
-  zeros.
-
-  ```typescript
-  const buf = FixedBuf.alloc(16, 0xff); // 16-byte buffer filled with 0xff
-  ```
-
-- **`fromHex<N>(size: N, hex: string): FixedBuf<N>`**\
-  Creates a `FixedBuf` of a specific size from a hexadecimal string. The hex
-  string must match the required length of the buffer.
-
-  ```typescript
-  const buf = FixedBuf.fromHex(16, "deadbeefcafebabe...");
-  ```
-
-- **`fromBase64(size: number, base64: string): FixedBuf<number>`**\
-  Creates a `FixedBuf` from a Base64-encoded string. The size of the resulting
-  buffer is determined by the `size` parameter.
-
-  ```typescript
-  const buf = FixedBuf.fromBase64(16, "SGVsbG8gd29ybGQ=");
-  ```
-
-- **`fromRandom<N>(size: N): FixedBuf<N>`**\
-  Creates a `FixedBuf` of the given size filled with cryptographically secure
-  random bytes.
-
-  ```typescript
-  const buf = FixedBuf.fromRandom(16);
-  ```
-
-#### Instance Methods
-
-- **`toHex(): string`**\
-  Converts the `FixedBuf` to a hexadecimal string representation.
-
-  ```typescript
-  const hex = fixedBuf.toHex();
-  ```
-
-- **`toBase64(): string`**\
-  Converts the `FixedBuf` to a Base64-encoded string.
-
-  ```typescript
-  const base64 = fixedBuf.toBase64();
-  ```
-
-- **`clone(): FixedBuf<N>`**\
-  Creates a deep copy of the `FixedBuf`.
-
-  ```typescript
-  const clonedBuf = fixedBuf.clone();
-  ```
-
-### Example Usage
+`FixedBuf<N>` wraps a `WebBuf` with compile-time size enforcement. This is
+essential for cryptographic operations where buffer sizes must be exact (32-byte
+keys, 64-byte signatures, etc.).
 
 ```typescript
-import { WebBuf, FixedBuf } from "webbuf";
+import { FixedBuf } from "@webbuf/fixedbuf";
 
-// Allocate a FixedBuf of 32 bytes filled with 0x00
-const buf = FixedBuf.alloc(32);
+// Creating fixed-size buffers
+const key = FixedBuf.alloc<32>(32);                           // 32 zero bytes
+const iv = FixedBuf.alloc<16>(16, 0xff);                      // 16 bytes of 0xff
+const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea...");  // From hex (must be exactly 32 bytes)
+const random = FixedBuf.fromRandom<32>(32);                   // 32 cryptographically random bytes
 
-// Create a FixedBuf from a hexadecimal string
-const hexBuf = FixedBuf.fromHex(16, "deadbeefcafebabe1234567890abcdef");
+// Access underlying WebBuf
+const webBuf: WebBuf = key.buf;
 
-// Clone the buffer
-const clonedBuf = hexBuf.clone();
+// Converting to strings
+hash.toHex();     // Returns hex string
+hash.toBase64();  // Returns base64 string
 
-// Convert to Base64
-const base64String = buf.toBase64();
+// Clone and reverse
+const cloned = key.clone();
+const reversed = key.toReverse();
 ```
 
-The `FixedBuf` class provides a robust way to manage fixed-size buffers with
-added functionality like encoding, randomization, and type enforcement, making
-it a powerful complement to the `WebBuf` class for specialized use cases where
-buffer size consistency is crucial.
+**Key Methods:**
 
-## Contributing
+| Static Methods                      | Description                         |
+| ----------------------------------- | ----------------------------------- |
+| `FixedBuf.alloc<N>(size, fill?)`    | Create fixed buffer of size N       |
+| `FixedBuf.fromBuf<N>(size, webBuf)` | Wrap WebBuf (throws if wrong size)  |
+| `FixedBuf.fromHex<N>(size, hex)`    | Parse hex (throws if wrong size)    |
+| `FixedBuf.fromBase64(size, b64)`    | Parse base64 (throws if wrong size) |
+| `FixedBuf.fromRandom<N>(size)`      | Generate N random bytes             |
 
-Contributions are welcome! Please feel free to submit pull requests or open
-issues for any improvements or bugs.
+| Instance Properties/Methods | Description              |
+| --------------------------- | ------------------------ |
+| `buf`                       | Get underlying WebBuf    |
+| `toHex()`                   | Convert to hex string    |
+| `toBase64()`                | Convert to base64 string |
+| `clone()`                   | Create a copy            |
+| `toReverse()`               | Create reversed copy     |
+
+**Common Fixed Sizes:**
+
+| Size           | Common Use                                           |
+| -------------- | ---------------------------------------------------- |
+| `FixedBuf<16>` | AES IV, AES-128 key                                  |
+| `FixedBuf<20>` | RIPEMD-160 hash                                      |
+| `FixedBuf<32>` | SHA-256 hash, BLAKE3 hash, private keys, AES-256 key |
+| `FixedBuf<33>` | Compressed public key (secp256k1)                    |
+| `FixedBuf<64>` | ECDSA signature                                      |
+
+---
+
+## Numbers (@webbuf/numbers)
+
+Fixed-size unsigned integers with big-endian (BE) and little-endian (LE)
+variants. All types follow the same pattern.
+
+```typescript
+import { U8, U16BE, U16LE, U32BE, U32LE, U64BE, U64LE, U128BE, U256BE } from "@webbuf/numbers";
+
+// Create from number or bigint
+const a = U32BE.fromN(1000);
+const b = U64BE.fromBn(0x123456789abcdef0n);
+
+// Arithmetic
+const sum = a.add(U32BE.fromN(500));
+const diff = a.sub(U32BE.fromN(100));
+const product = a.mul(U32BE.fromN(2));
+const quotient = a.div(U32BE.fromN(10));
+
+// Access value
+a.n;   // As number
+a.bn;  // As bigint
+
+// Buffer conversion
+const beBuf = a.toBEBuf();  // FixedBuf in big-endian
+const leBuf = a.toLEBuf();  // FixedBuf in little-endian
+const restored = U32BE.fromBEBuf(beBuf);
+
+// Hex conversion
+a.toHex();                      // "000003e8"
+U32BE.fromHex("000003e8");      // Parse hex
+```
+
+**Available Types:**
+
+| Type   | Size     | Variants           |
+| ------ | -------- | ------------------ |
+| `U8`   | 1 byte   | (no endianness)    |
+| `U16`  | 2 bytes  | `U16BE`, `U16LE`   |
+| `U32`  | 4 bytes  | `U32BE`, `U32LE`   |
+| `U64`  | 8 bytes  | `U64BE`, `U64LE`   |
+| `U128` | 16 bytes | `U128BE`, `U128LE` |
+| `U256` | 32 bytes | `U256BE`, `U256LE` |
+
+All types have: `fromN()`, `fromBn()`, `fromBEBuf()`, `fromLEBuf()`,
+`fromHex()`, `toBEBuf()`, `toLEBuf()`, `toHex()`, `add()`, `sub()`, `mul()`,
+`div()`, `.n`, `.bn`
+
+---
+
+## Buffer I/O (@webbuf/rw)
+
+Sequential reading and writing of binary data.
+
+```typescript
+import { BufReader, BufWriter } from "@webbuf/rw";
+
+// Writing
+const writer = new BufWriter();
+writer.writeU8(new U8(255));
+writer.writeU32BE(new U32BE(123456));
+writer.writeFixed(someFixedBuf);
+const result = writer.toBuf();
+
+// Reading
+const reader = new BufReader(result);
+const u8 = reader.readU8();
+const u32 = reader.readU32BE();
+const fixed = reader.readFixed<32>(32);
+reader.eof();        // true if at end
+reader.remainder();  // remaining bytes
+```
+
+---
+
+## Hashing
+
+### BLAKE3 (@webbuf/blake3)
+
+```typescript
+import { blake3Hash, doubleBlake3Hash, blake3Mac } from "@webbuf/blake3";
+
+const data = WebBuf.fromUtf8("Hello");
+const hash = blake3Hash(data);              // FixedBuf<32>
+const double = doubleBlake3Hash(data);      // FixedBuf<32>
+
+const key = FixedBuf.fromRandom<32>(32);
+const mac = blake3Mac(key, data);           // FixedBuf<32>
+```
+
+### SHA-256 (@webbuf/sha256)
+
+```typescript
+import { sha256Hash, doubleSha256Hash, sha256Hmac } from "@webbuf/sha256";
+
+const data = WebBuf.fromUtf8("abc");
+const hash = sha256Hash(data);              // FixedBuf<32>
+const double = doubleSha256Hash(data);      // FixedBuf<32> (used in Bitcoin)
+
+const key = WebBuf.fromUtf8("secret");
+const hmac = sha256Hmac(key, data);         // FixedBuf<32>
+```
+
+### RIPEMD-160 (@webbuf/ripemd160)
+
+```typescript
+import { ripemd160Hash, doubleRipemd160Hash } from "@webbuf/ripemd160";
+
+const data = WebBuf.fromUtf8("Hello");
+const hash = ripemd160Hash(data);           // FixedBuf<20>
+const double = doubleRipemd160Hash(data);   // FixedBuf<20>
+```
+
+---
+
+## Elliptic Curves (@webbuf/secp256k1)
+
+ECDSA signatures and ECDH key exchange on the secp256k1 curve.
+
+```typescript
+import {
+  privateKeyVerify, publicKeyVerify, publicKeyCreate,
+  privateKeyAdd, publicKeyAdd,
+  sign, verify, sharedSecret
+} from "@webbuf/secp256k1";
+
+// Key generation
+const privKey = FixedBuf.fromRandom<32>(32);
+privateKeyVerify(privKey);                    // true if valid
+const pubKey = publicKeyCreate(privKey);      // FixedBuf<33> (compressed)
+publicKeyVerify(pubKey);                      // true if valid
+
+// Key addition (for HD wallets, stealth addresses, etc.)
+const combined = privateKeyAdd(privKey1, privKey2);  // FixedBuf<32>
+const combinedPub = publicKeyAdd(pubKey1, pubKey2);  // FixedBuf<33>
+
+// Signing (requires 32-byte hash and 32-byte nonce k)
+const messageHash = sha256Hash(WebBuf.fromUtf8("message"));
+const k = FixedBuf.fromRandom<32>(32);  // Use RFC 6979 in production!
+const signature = sign(messageHash, privKey, k);  // FixedBuf<64>
+
+// Verification
+verify(signature, messageHash, pubKey);  // true if valid
+
+// Diffie-Hellman shared secret
+const alicePriv = FixedBuf.fromRandom<32>(32);
+const bobPriv = FixedBuf.fromRandom<32>(32);
+const alicePub = publicKeyCreate(alicePriv);
+const bobPub = publicKeyCreate(bobPriv);
+const secretA = sharedSecret(alicePriv, bobPub);  // FixedBuf<33>
+const secretB = sharedSecret(bobPriv, alicePub);  // Same as secretA
+```
+
+---
+
+## Encryption
+
+### AES-CBC (@webbuf/aescbc)
+
+Low-level AES-CBC. **No authentication** - use `@webbuf/acb3` for authenticated
+encryption.
+
+```typescript
+import { aescbcEncrypt, aescbcDecrypt } from "@webbuf/aescbc";
+
+const key = FixedBuf.fromRandom<32>(32);  // AES-256
+const iv = FixedBuf.fromRandom<16>(16);   // Optional, random if not provided
+const plaintext = WebBuf.fromUtf8("Secret");
+
+const ciphertext = aescbcEncrypt(plaintext, key, iv);  // IV prepended
+const decrypted = aescbcDecrypt(ciphertext, key);      // Extracts IV automatically
+```
+
+### ACB3 - Authenticated Encryption (@webbuf/acb3)
+
+AES-CBC + BLAKE3 MAC. Provides both encryption and authentication.
+
+```typescript
+import { acb3Encrypt, acb3Decrypt } from "@webbuf/acb3";
+
+const key = FixedBuf.fromRandom<32>(32);
+const plaintext = WebBuf.fromUtf8("Secret message");
+
+const ciphertext = acb3Encrypt(plaintext, key);
+
+try {
+  const decrypted = acb3Decrypt(ciphertext, key);
+  // Success - data is authentic
+} catch (e) {
+  // Authentication failed - data was tampered
+}
+```
+
+### ACB3DH - Authenticated Encryption with Key Exchange (@webbuf/acb3dh)
+
+Combines ECDH key derivation with ACB3 encryption.
+
+```typescript
+import { acb3dhEncrypt, acb3dhDecrypt } from "@webbuf/acb3dh";
+import { publicKeyCreate } from "@webbuf/secp256k1";
+
+const alicePriv = FixedBuf.fromRandom<32>(32);
+const alicePub = publicKeyCreate(alicePriv);
+const bobPriv = FixedBuf.fromRandom<32>(32);
+const bobPub = publicKeyCreate(bobPriv);
+
+// Alice encrypts to Bob
+const ciphertext = acb3dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"));
+
+// Bob decrypts from Alice
+const plaintext = acb3dhDecrypt(bobPriv, alicePub, ciphertext);
+```
+
+---
+
+## Common Patterns
+
+### Working with Hex Strings
+
+```typescript
+// WebBuf: variable-length hex
+const buf = WebBuf.fromHex("deadbeef0102030405");
+buf.toHex();  // "deadbeef0102030405"
+
+// FixedBuf: fixed-length hex (must match size exactly)
+const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+hash.toHex();  // Same 64-char hex string
+```
+
+### Generating Random Data
+
+```typescript
+// Fixed-size random (most common for crypto)
+const key = FixedBuf.fromRandom<32>(32);      // 32-byte key
+const iv = FixedBuf.fromRandom<16>(16);       // 16-byte IV
+const nonce = FixedBuf.fromRandom<32>(32);    // 32-byte nonce
+
+// Variable-size random
+const random = WebBuf.alloc(64);
+crypto.getRandomValues(random);
+```
+
+### Type-Safe Cryptographic Operations
+
+```typescript
+// Functions enforce correct buffer sizes at compile time
+function encryptMessage(
+  key: FixedBuf<32>,
+  iv: FixedBuf<16>,
+  plaintext: WebBuf
+): WebBuf {
+  return aescbcEncrypt(plaintext, key, iv);
+}
+
+// Hash outputs are always the correct size
+const sha256: FixedBuf<32> = sha256Hash(data);
+const blake3: FixedBuf<32> = blake3Hash(data);
+const ripemd: FixedBuf<20> = ripemd160Hash(data);
+```
+
+---
+
+## Repository Structure
+
+```
+webbuf/
+├── rs/                         # Rust crates (compiled to WASM)
+│   ├── webbuf/                 # Base64/hex encoding
+│   ├── webbuf_blake3/          # BLAKE3
+│   ├── webbuf_sha256/          # SHA-256
+│   ├── webbuf_ripemd160/       # RIPEMD-160
+│   ├── webbuf_secp256k1/       # secp256k1
+│   └── webbuf_aescbc/          # AES-CBC
+└── ts/                         # TypeScript packages
+    ├── npm-webbuf-webbuf/      # @webbuf/webbuf
+    ├── npm-webbuf-fixedbuf/    # @webbuf/fixedbuf
+    ├── npm-webbuf-numbers/     # @webbuf/numbers
+    ├── npm-webbuf-rw/          # @webbuf/rw
+    ├── npm-webbuf-blake3/      # @webbuf/blake3
+    ├── npm-webbuf-sha256/      # @webbuf/sha256
+    ├── npm-webbuf-ripemd160/   # @webbuf/ripemd160
+    ├── npm-webbuf-secp256k1/   # @webbuf/secp256k1
+    ├── npm-webbuf-aescbc/      # @webbuf/aescbc
+    ├── npm-webbuf-acb3/        # @webbuf/acb3
+    ├── npm-webbuf-acb3dh/      # @webbuf/acb3dh
+    └── npm-webbuf/             # webbuf (re-exports all)
+```
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
