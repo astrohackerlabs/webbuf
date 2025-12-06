@@ -19,26 +19,32 @@ webbuf/
 │   ├── Cargo.toml               # Workspace config (version: 0.12.95)
 │   ├── webbuf/                  # Base64/hex encoding (core WASM)
 │   ├── webbuf_blake3/           # BLAKE3 hashing
+│   ├── webbuf_sha256/           # SHA-256 hashing and HMAC-SHA256
 │   ├── webbuf_ripemd160/        # RIPEMD160 hashing
 │   ├── webbuf_secp256k1/        # Elliptic curve cryptography
 │   └── webbuf_aescbc/           # AES-CBC encryption
 │
 ├── ts/                          # TypeScript pnpm monorepo
-│   ├── package.json             # Workspace root (version: 3.0.28)
+│   ├── package.json             # Workspace root
 │   ├── pnpm-workspace.yaml      # pnpm workspace config
+│   ├── eslint.config.js         # Shared ESLint config (flat config format)
+│   ├── .prettierrc              # Shared Prettier config
+│   ├── .prettierignore          # Prettier ignore patterns
 │   ├── npm-webbuf-webbuf/       # Core WebBuf class (@webbuf/webbuf)
 │   ├── npm-webbuf-fixedbuf/     # Fixed-size buffers (@webbuf/fixedbuf)
 │   ├── npm-webbuf-numbers/      # U8, U16BE, U32BE, etc. (@webbuf/numbers)
 │   ├── npm-webbuf-rw/           # BufReader/BufWriter (@webbuf/rw)
 │   ├── npm-webbuf-blake3/       # BLAKE3 wrapper (@webbuf/blake3)
+│   ├── npm-webbuf-sha256/       # SHA-256 wrapper (@webbuf/sha256)
 │   ├── npm-webbuf-ripemd160/    # RIPEMD160 wrapper (@webbuf/ripemd160)
 │   ├── npm-webbuf-secp256k1/    # secp256k1 wrapper (@webbuf/secp256k1)
 │   ├── npm-webbuf-aescbc/       # AES-CBC wrapper (@webbuf/aescbc)
 │   ├── npm-webbuf-acb3/         # Combined crypto (@webbuf/acb3)
 │   ├── npm-webbuf-acb3dh/       # DH crypto (@webbuf/acb3dh)
-│   └── webbuf/                  # Main package re-exporting all (webbuf)
+│   └── npm-webbuf/              # Main package re-exporting all (webbuf)
 │
-└── AGENTS.md                    # This file
+├── AGENTS.md                    # This file
+└── CLAUDE.md                    # Symlink to AGENTS.md
 ```
 
 ## Languages & Tools
@@ -56,7 +62,8 @@ webbuf/
 - **Module**: ESNext (ESM only)
 - **Build Tool**: Vite 6.1.0
 - **Test Framework**: Vitest 3.0.5
-- **Linter/Formatter**: Biome 2.0.6
+- **Linter**: ESLint 9.x with typescript-eslint (strict type-checked rules)
+- **Formatter**: Prettier 3.x (default settings)
 - **Package Manager**: pnpm 9.12.3+
 - **Node Version**: >=20.8.0
 
@@ -110,7 +117,7 @@ const wasm = new WebAssembly.Instance(wasmModule, importObject).exports;
 export { wasm };
 ```
 
-This enables single-file distribution without separate `.wasm` files.
+**Why inline as base64?** This enables synchronous WASM loading. Normally, loading a `.wasm` file requires async operations (`fetch`, `WebAssembly.instantiateStreaming`). By inlining as base64, we can use `new WebAssembly.Module()` and `new WebAssembly.Instance()` which are synchronous. This means webbuf packages behave like normal JavaScript libraries - no async imports, no top-level await required.
 
 ### Step 4: Wrap with TypeScript
 
@@ -137,8 +144,8 @@ Each TypeScript package follows this script pattern:
   "clean": "rimraf dist",
   "test": "vitest --run",
   "typecheck": "tsc --noEmit",
-  "lint": "biome lint --write --unsafe",
-  "format": "biome format --write",
+  "lint": "eslint . --fix",
+  "format": "prettier --write . --ignore-path ../.prettierignore",
   "fix": "pnpm run typecheck && pnpm run lint && pnpm run format",
   "sync:from-rust": "cp -r ../../rs/<pkg>/build/bundler/* src/rs-<pkg>-bundler/",
   "build:bundler-to-inline-base64": "cp -r src/rs-<pkg>-bundler/* src/rs-<pkg>-inline-base64/",
@@ -149,6 +156,8 @@ Each TypeScript package follows this script pattern:
   "prepublishOnly": "pnpm run clean && pnpm run build"
 }
 ```
+
+Note: ESLint and Prettier configs are shared at the `ts/` workspace root. Each package references the root `.prettierignore` via `--ignore-path ../.prettierignore`.
 
 ## Core Types
 
@@ -335,13 +344,17 @@ pnpm test
 
 ### Rust Crypto Libraries
 - `blake3` - BLAKE3 hashing
+- `sha2` - SHA-256 hashing (from RustCrypto)
+- `hmac` - HMAC implementation (from RustCrypto, used with sha2)
 - `ripemd` - RIPEMD160 hashing
 - `k256` - secp256k1 elliptic curves (from RustCrypto)
 - `aes` - AES encryption
-- `sha2` - SHA-256/SHA-512 (for future additions)
 
 ### TypeScript Dev Dependencies
-- `@biomejs/biome` - Linting and formatting
+- `eslint` - Linting
+- `@eslint/js` - ESLint core rules
+- `typescript-eslint` - TypeScript ESLint plugin
+- `prettier` - Code formatting
 - `@types/node` - Node.js types
 - `rimraf` - Cross-platform rm -rf
 - `tsx` - TypeScript execution
@@ -376,11 +389,14 @@ NPM packages are published under the `@webbuf/` scope:
 - `@webbuf/fixedbuf` - Fixed-size buffers
 - `@webbuf/numbers` - Numeric types
 - `@webbuf/rw` - Reader/writer
-- `@webbuf/blake3` - BLAKE3
-- `@webbuf/secp256k1` - secp256k1
-- `@webbuf/ripemd160` - RIPEMD160
-- `@webbuf/aescbc` - AES-CBC
-- `webbuf` - Main package (re-exports all)
+- `@webbuf/blake3` - BLAKE3 hash and MAC
+- `@webbuf/sha256` - SHA-256 hash and HMAC-SHA256
+- `@webbuf/ripemd160` - RIPEMD160 hash
+- `@webbuf/secp256k1` - secp256k1 ECDSA and ECDH
+- `@webbuf/aescbc` - AES-CBC encryption
+- `@webbuf/acb3` - AES-CBC + BLAKE3 MAC
+- `@webbuf/acb3dh` - AES-CBC + BLAKE3 + secp256k1 Diffie-Hellman
+- `webbuf` - Main package (re-exports core utilities)
 
 The `prepublishOnly` script ensures clean builds before publishing.
 
@@ -394,7 +410,7 @@ Versions are managed independently but should be updated together when making re
 ## Code Style
 
 - **Rust**: Standard Rust formatting (`cargo fmt`)
-- **TypeScript**: Biome with strict settings
+- **TypeScript**: ESLint with strict type-checked rules + Prettier with default settings
 - **No emojis** unless explicitly requested
 - **Strict TypeScript** mode enabled
 - **ESM only** - no CommonJS
