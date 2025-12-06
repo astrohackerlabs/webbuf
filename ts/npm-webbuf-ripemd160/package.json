@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/ripemd160",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Rust/wasm optimized ripemd160 hash & mac for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
