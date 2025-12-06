@@ -118,13 +118,22 @@ Tests cover:
 SHA-256 hash and HMAC.
 
 - [x] Web Crypto comparison tests (already implemented)
-- [ ] Add NIST FIPS 180-4 test vectors for SHA-256
-  - URL:
-    https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
-- [ ] Add RFC 4231 test vectors for HMAC-SHA256
-  - URL: https://datatracker.ietf.org/doc/html/rfc4231
-- [ ] Test empty input
-- [ ] Test multi-block inputs (>64 bytes)
+- [x] Add NIST FIPS 180-4 test vectors for SHA-256
+- [x] Add RFC 4231 test vectors for HMAC-SHA256 (all 7 test cases)
+- [x] Test empty input
+- [x] Test multi-block inputs (>64 bytes)
+
+Audit tests: `ts/npm-webbuf-sha256/test/audit.test.ts` (42 tests)
+
+Tests cover:
+- NIST FIPS 180-4 test vectors (empty, "abc", 448-bit, 896-bit, 1 million "a"s)
+- All 7 RFC 4231 HMAC-SHA256 test vectors including long keys (131 bytes)
+- doubleSha256Hash correctness verification
+- SHA-256 block boundary tests (55, 56, 63, 64, 65, 128 bytes)
+- HMAC key handling (empty, 1-byte, 64-byte, 65-byte, 128-byte keys)
+- Output size, determinism, collision resistance properties
+- Common test strings ("hello", "hello world")
+- Edge cases (all zeros, all 0xFF, 1MB input)
 
 ### @webbuf/ripemd160
 
