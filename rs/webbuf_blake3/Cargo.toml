@@ -4,8 +4,8 @@ description = "Blake3 hash function for WebBuf with optional support for WASM."
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Ryan X. Charles <ryan@ryanxcharles.com>"]
-repository = "https://github.com/earthbucks/earthbucks"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

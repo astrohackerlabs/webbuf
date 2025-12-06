@@ -2,11 +2,11 @@
 name = "webbuf"
 version.workspace = true
 edition = "2021"
-authors = ["Ryan X. Charles <ryan@ryanxcharles.com> (https://ryanxcharles.com)"]
+authors = ["Identellica LLC"]
 description = "A Rust library for fast base64 and hex encoding/decoding"
 license = "MIT"
-repository = "https://github.com/ryanxcharles/webbuf"
-homepage = "https://github.com/ryanxcharles/webbuf"
+repository = "https://github.com/identellica/webbuf"
+homepage = "https://github.com/identellica/webbuf"
 readme = "README.md"
 keywords = ["base64", "hex", "encoding", "performance", "web"]
 categories = ["encoding"]

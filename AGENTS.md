@@ -237,8 +237,8 @@ description = "<Description>"
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Ryan X. Charles <ryan@ryanxcharles.com>"]
-repository = "https://github.com/ryanxcharles/webbuf"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

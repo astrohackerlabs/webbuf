@@ -4,8 +4,8 @@ description = "WebBuf AES-CBC library"
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Ryan X. Charles <ryan@ryanxcharles.com> (https://ryanxcharles.com)"]
-repository = "https://github.com/ryanxcharles/webbuf"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
