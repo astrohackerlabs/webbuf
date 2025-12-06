@@ -26,15 +26,42 @@ importers:
 
   npm-webbuf:
     dependencies:
+      '@webbuf/acb3':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acb3
+      '@webbuf/acb3dh':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acb3dh
+      '@webbuf/acs2':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acs2
+      '@webbuf/acs2dh':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acs2dh
+      '@webbuf/aescbc':
+        specifier: workspace:^
+        version: link:../npm-webbuf-aescbc
+      '@webbuf/blake3':
+        specifier: workspace:^
+        version: link:../npm-webbuf-blake3
       '@webbuf/fixedbuf':
         specifier: workspace:^
         version: link:../npm-webbuf-fixedbuf
       '@webbuf/numbers':
         specifier: workspace:^
         version: link:../npm-webbuf-numbers
+      '@webbuf/ripemd160':
+        specifier: workspace:^
+        version: link:../npm-webbuf-ripemd160
       '@webbuf/rw':
         specifier: workspace:^
         version: link:../npm-webbuf-rw
+      '@webbuf/secp256k1':
+        specifier: workspace:^
+        version: link:../npm-webbuf-secp256k1
+      '@webbuf/sha256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-sha256
       '@webbuf/webbuf':
         specifier: workspace:^
         version: link:../npm-webbuf-webbuf
@@ -136,6 +163,104 @@ importers:
       '@webbuf/secp256k1':
         specifier: workspace:^
         version: link:../npm-webbuf-secp256k1
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.1
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.16.5
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.1
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.0.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.21.0
+        version: 8.48.1(eslint@9.39.1)(typescript@5.8.3)
+      vite:
+        specifier: ^6.1.0
+        version: 6.3.5(@types/node@22.16.5)(tsx@4.20.3)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.16.5)(tsx@4.20.3)
+
+  npm-webbuf-acs2:
+    dependencies:
+      '@webbuf/aescbc':
+        specifier: workspace:^
+        version: link:../npm-webbuf-aescbc
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
+      '@webbuf/sha256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-sha256
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.1
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.16.5
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.1
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.0.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.21.0
+        version: 8.48.1(eslint@9.39.1)(typescript@5.8.3)
+      vite:
+        specifier: ^6.1.0
+        version: 6.3.5(@types/node@22.16.5)(tsx@4.20.3)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.16.5)(tsx@4.20.3)
+
+  npm-webbuf-acs2dh:
+    dependencies:
+      '@webbuf/acs2':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acs2
+      '@webbuf/aescbc':
+        specifier: workspace:^
+        version: link:../npm-webbuf-aescbc
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
+      '@webbuf/secp256k1':
+        specifier: workspace:^
+        version: link:../npm-webbuf-secp256k1
+      '@webbuf/sha256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-sha256
       '@webbuf/webbuf':
         specifier: workspace:^
         version: link:../npm-webbuf-webbuf

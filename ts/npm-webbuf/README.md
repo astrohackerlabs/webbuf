@@ -58,6 +58,10 @@ import {
   acb3Decrypt,
   acb3dhEncrypt,
   acb3dhDecrypt,
+  acs2Encrypt,
+  acs2Decrypt,
+  acs2dhEncrypt,
+  acs2dhDecrypt,
 } from "webbuf";
 ```
 
@@ -76,6 +80,8 @@ import {
 | `@webbuf/aescbc`    | AES-CBC encryption                           |
 | `@webbuf/acb3`      | AES-CBC + BLAKE3 MAC                         |
 | `@webbuf/acb3dh`    | ACB3 + ECDH key exchange                     |
+| `@webbuf/acs2`      | AES-CBC + SHA-256 HMAC                       |
+| `@webbuf/acs2dh`    | ACS2 + ECDH key exchange                     |
 
 ## License
 
