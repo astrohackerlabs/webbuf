@@ -55,14 +55,20 @@ independent copy. Fixed by changing `WebBuf.from(this._buf)` to
 
 Fixed-size unsigned integers with big/little endian support.
 
-- [ ] Verify U8 boundary values (0, 255)
-- [ ] Verify U16BE/U16LE byte ordering with known values
-- [ ] Verify U32BE/U32LE byte ordering with known values
-- [ ] Verify U64BE/U64LE byte ordering with known values
-- [ ] Verify U128BE/U128LE byte ordering with known values
-- [ ] Verify U256BE/U256LE byte ordering with known values
-- [ ] Test max values for each type
-- [ ] Test endianness against Node.js DataView or known test vectors
+- [x] Verify U8 boundary values (0, 255)
+- [x] Verify U16BE/U16LE byte ordering with known values
+- [x] Verify U32BE/U32LE byte ordering with known values
+- [x] Verify U64BE/U64LE byte ordering with known values
+- [x] Verify U128BE/U128LE byte ordering with known values
+- [x] Verify U256BE/U256LE byte ordering with known values
+- [x] Test max values for each type
+- [x] Test endianness against Node.js DataView or known test vectors
+
+Audit tests: `ts/npm-webbuf-numbers/test/audit.test.ts` (69 tests)
+
+**BUG FIXED:** `U32BE.fromBn()` and `U32LE.fromBn()` had incorrect overflow checks.
+They were checking against `0xffffffffffffffffn` (U64 max) instead of
+`0xffffffffn` (U32 max). Fixed in `numbers/src/index.ts` lines 289 and 380.
 
 ### @webbuf/rw
 

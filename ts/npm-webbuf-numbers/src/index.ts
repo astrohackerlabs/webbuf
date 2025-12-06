@@ -286,7 +286,7 @@ export class U32BE extends FixedNum<4> {
 
   static fromBn(bn: bigint): U32BE {
     const byteLen = 4;
-    if (bn < 0 || bn > 0xffffffffffffffffn) {
+    if (bn < 0 || bn > 0xffffffffn) {
       throw new Error("Invalid number");
     }
     const bytes = new Array(byteLen);
@@ -377,7 +377,7 @@ export class U32LE extends FixedNum<4> {
 
   static fromBn(bn: bigint): U32LE {
     const byteLen = 4;
-    if (bn < 0 || bn > 0xffffffffffffffffn) {
+    if (bn < 0 || bn > 0xffffffffn) {
       throw new Error("Invalid number");
     }
     const bytes = new Array(byteLen);
