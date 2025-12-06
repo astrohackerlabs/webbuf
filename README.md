@@ -373,6 +373,52 @@ const ciphertext = acb3dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"
 const plaintext = acb3dhDecrypt(bobPriv, alicePub, ciphertext);
 ```
 
+### ACS2 - Authenticated Encryption (@webbuf/acs2)
+
+AES-CBC encryption with SHA-256 HMAC authentication. Uses the Encrypt-then-MAC
+pattern for secure authenticated encryption.
+
+```typescript
+import { acs2Encrypt, acs2Decrypt } from "@webbuf/acs2";
+import { FixedBuf } from "@webbuf/fixedbuf";
+import { WebBuf } from "@webbuf/webbuf";
+
+const key = FixedBuf.fromRandom<32>(32);
+const plaintext = WebBuf.fromUtf8("Secret message");
+
+// Encrypt (IV generated automatically if not provided)
+const ciphertext = acs2Encrypt(plaintext, key);
+
+// Decrypt with authentication verification
+try {
+  const decrypted = acs2Decrypt(ciphertext, key);
+  // Success - data is authentic
+} catch (e) {
+  // Authentication failed - data was tampered
+}
+```
+
+### ACS2DH - Authenticated Encryption with Key Exchange (@webbuf/acs2dh)
+
+Combines ECDH key derivation with ACS2 encryption. The shared secret is hashed
+with SHA-256 to derive the encryption key.
+
+```typescript
+import { acs2dhEncrypt, acs2dhDecrypt } from "@webbuf/acs2dh";
+import { publicKeyCreate } from "@webbuf/secp256k1";
+
+const alicePriv = FixedBuf.fromRandom<32>(32);
+const alicePub = publicKeyCreate(alicePriv);
+const bobPriv = FixedBuf.fromRandom<32>(32);
+const bobPub = publicKeyCreate(bobPriv);
+
+// Alice encrypts to Bob
+const ciphertext = acs2dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"));
+
+// Bob decrypts from Alice
+const plaintext = acs2dhDecrypt(bobPriv, alicePub, ciphertext);
+```
+
 ---
 
 ## Common Patterns
@@ -457,9 +503,9 @@ all cryptographic implementations. Each package is tested against official test
 vectors, cross-verified with trusted implementations, and checked for proper
 security properties.
 
-| Audit | Date | Packages | Tests | Bugs Found |
-|-------|------|----------|-------|------------|
-| [December 2024](./audits/2024-12-audit.md) | Dec 2024 | 13 | 598 | 2 (fixed) |
+| Audit                                      | Date     | Packages | Tests | Bugs Found |
+| ------------------------------------------ | -------- | -------- | ----- | ---------- |
+| [December 2024](./audits/2024-12-audit.md) | Dec 2024 | 13       | 598   | 2 (fixed)  |
 
 For more information about our audit process and methodology, see the
 [audits README](./audits/README.md).
