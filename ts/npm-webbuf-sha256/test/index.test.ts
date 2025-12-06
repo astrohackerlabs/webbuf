@@ -3,6 +3,35 @@ import { sha256Hash, doubleSha256Hash, sha256Hmac } from "../src/index.js";
 import { WebBuf } from "@webbuf/webbuf";
 import { FixedBuf } from "@webbuf/fixedbuf";
 
+// Helper to compute SHA-256 using Web Crypto API
+async function webCryptoSha256(data: Uint8Array): Promise<Uint8Array> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return new Uint8Array(hashBuffer);
+}
+
+// Helper to compute HMAC-SHA256 using Web Crypto API
+async function webCryptoHmacSha256(
+  key: Uint8Array,
+  data: Uint8Array,
+): Promise<Uint8Array> {
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    key,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, data);
+  return new Uint8Array(signatureBuffer);
+}
+
+// Helper to generate random bytes
+function randomBytes(length: number): WebBuf {
+  const buf = WebBuf.alloc(length);
+  crypto.getRandomValues(buf);
+  return buf;
+}
+
 describe("SHA256", () => {
   it("should correctly compute sha256 hash of empty string", () => {
     const input = WebBuf.fromUtf8("");
@@ -64,5 +93,135 @@ describe("SHA256", () => {
     const expectedMacHex =
       "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843";
     expect(result.toHex()).toBe(expectedMacHex);
+  });
+});
+
+describe("SHA256 vs Web Crypto API", () => {
+  it("should match Web Crypto for empty input", async () => {
+    const input = WebBuf.fromUtf8("");
+    const webbufResult = sha256Hash(input);
+    const webCryptoResult = await webCryptoSha256(input);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for single byte", async () => {
+    const input = WebBuf.fromHex("42");
+    const webbufResult = sha256Hash(input);
+    const webCryptoResult = await webCryptoSha256(input);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for small input (< 64 bytes)", async () => {
+    const input = randomBytes(32);
+    const webbufResult = sha256Hash(input);
+    const webCryptoResult = await webCryptoSha256(input);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for exactly 64 bytes (one block)", async () => {
+    const input = randomBytes(64);
+    const webbufResult = sha256Hash(input);
+    const webCryptoResult = await webCryptoSha256(input);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for medium input (500 bytes)", async () => {
+    const input = randomBytes(500);
+    const webbufResult = sha256Hash(input);
+    const webCryptoResult = await webCryptoSha256(input);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for large input (10KB)", async () => {
+    const input = randomBytes(10 * 1024);
+    const webbufResult = sha256Hash(input);
+    const webCryptoResult = await webCryptoSha256(input);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for multiple random sizes", async () => {
+    const sizes = [1, 15, 63, 64, 65, 127, 128, 129, 256, 1000, 4096];
+
+    for (const size of sizes) {
+      const input = randomBytes(size);
+      const webbufResult = sha256Hash(input);
+      const webCryptoResult = await webCryptoSha256(input);
+
+      expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+    }
+  });
+});
+
+describe("HMAC-SHA256 vs Web Crypto API", () => {
+  it("should match Web Crypto for small key and message", async () => {
+    const key = randomBytes(32);
+    const message = randomBytes(64);
+    const webbufResult = sha256Hmac(key, message);
+    const webCryptoResult = await webCryptoHmacSha256(key, message);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for empty message", async () => {
+    const key = randomBytes(32);
+    const message = WebBuf.fromUtf8("");
+    const webbufResult = sha256Hmac(key, message);
+    const webCryptoResult = await webCryptoHmacSha256(key, message);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for short key (< 64 bytes)", async () => {
+    const key = randomBytes(16);
+    const message = randomBytes(100);
+    const webbufResult = sha256Hmac(key, message);
+    const webCryptoResult = await webCryptoHmacSha256(key, message);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for long key (> 64 bytes)", async () => {
+    const key = randomBytes(128);
+    const message = randomBytes(100);
+    const webbufResult = sha256Hmac(key, message);
+    const webCryptoResult = await webCryptoHmacSha256(key, message);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for large message (10KB)", async () => {
+    const key = randomBytes(32);
+    const message = randomBytes(10 * 1024);
+    const webbufResult = sha256Hmac(key, message);
+    const webCryptoResult = await webCryptoHmacSha256(key, message);
+
+    expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+  });
+
+  it("should match Web Crypto for multiple random key/message sizes", async () => {
+    const testCases = [
+      { keySize: 1, messageSize: 1 },
+      { keySize: 16, messageSize: 32 },
+      { keySize: 32, messageSize: 64 },
+      { keySize: 64, messageSize: 128 },
+      { keySize: 128, messageSize: 256 },
+      { keySize: 32, messageSize: 1000 },
+      { keySize: 64, messageSize: 4096 },
+    ];
+
+    for (const { keySize, messageSize } of testCases) {
+      const key = randomBytes(keySize);
+      const message = randomBytes(messageSize);
+      const webbufResult = sha256Hmac(key, message);
+      const webCryptoResult = await webCryptoHmacSha256(key, message);
+
+      expect(webbufResult.buf).toEqual(WebBuf.fromUint8Array(webCryptoResult));
+    }
   });
 });
