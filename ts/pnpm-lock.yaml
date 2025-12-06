@@ -366,6 +366,40 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.16.5)(tsx@4.20.3)
 
+  npm-webbuf-sha256:
+    dependencies:
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@biomejs/biome':
+        specifier: ^2.0.6
+        version: 2.1.2
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.16.5
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.0.1
+      tsx:
+        specifier: ^4.19.2
+        version: 4.20.3
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      vite:
+        specifier: ^6.1.0
+        version: 6.3.5(@types/node@22.16.5)(tsx@4.20.3)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.16.5)(tsx@4.20.3)
+
   npm-webbuf-webbuf:
     devDependencies:
       '@biomejs/biome':
