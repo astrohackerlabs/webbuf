@@ -26,6 +26,4 @@ wasm = ["wasm-bindgen"]
 version = "0.2"
 optional = true
 
-[build-dependencies]
-wasm-pack = "0.13.0"
 
