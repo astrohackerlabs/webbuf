@@ -219,14 +219,10 @@ describe("Audit: clone and toReverse", () => {
       expect(cloned.toHex()).toBe("deadbeef");
       expect(cloned._size).toBe(4);
 
-      // BUG FOUND: clone() uses WebBuf.from() which calls WebBuf.view() for Uint8Array,
-      // creating a shared view instead of an independent copy.
-      // The fix would be to use: new WebBuf(this._buf) or WebBuf.fromUint8Array(this._buf)
-      // For now, we document current behavior:
+      // Modify original, clone should be unaffected
       original.buf[0] = 0x00;
-      // KNOWN BUG: cloned.buf[0] should be 0xde but is 0x00 due to shared buffer
-      expect(cloned.buf[0]).toBe(0x00); // Current buggy behavior - shares buffer
-      // expect(cloned.buf[0]).toBe(0xde); // Expected correct behavior
+      expect(cloned.buf[0]).toBe(0xde); // Clone is independent
+      expect(original.buf[0]).toBe(0x00); // Original was modified
     });
 
     it("should preserve size type", () => {

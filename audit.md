@@ -47,8 +47,8 @@ Fixed-size buffer wrapper.
 
 Audit tests: `ts/npm-webbuf-fixedbuf/test/audit.test.ts` (52 tests)
 
-**BUG FOUND:** `clone()` method creates a shared view instead of an independent
-copy. The fix would be to change `WebBuf.from(this._buf)` to
+**BUG FIXED:** `clone()` method was creating a shared view instead of an
+independent copy. Fixed by changing `WebBuf.from(this._buf)` to
 `new WebBuf(this._buf)` in `fixedbuf.ts:56`.
 
 ### @webbuf/numbers

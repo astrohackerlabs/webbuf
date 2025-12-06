@@ -53,7 +53,7 @@ export class FixedBuf<N extends number> {
   }
 
   clone(): FixedBuf<N> {
-    return FixedBuf.fromBuf(this._size, WebBuf.from(this._buf));
+    return FixedBuf.fromBuf(this._size, new WebBuf(this._buf));
   }
 
   toReverse(): FixedBuf<N> {
