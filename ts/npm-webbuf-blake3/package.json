@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/blake3",
-  "version": "3.0.28",
+  "version": "3.1.0",
   "description": "Rust/wasm optimized blake3 hash & mac for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
