@@ -1,111 +1,105 @@
-# @earthbucks/secp256k1
+# @webbuf/secp256k1
 
-`@earthbucks/secp256k1` is a TypeScript/Node.js library with WebAssembly (WASM) support, providing ECDSA and Diffie-Hellman functionality for the secp256k1 elliptic curve, commonly used in Bitcoin, Ethereum, and EarthBucks. The library allows you to perform key operations, message signing/verification, and Diffie-Hellman key exchanges using a pre-built WebAssembly module.
-
----
-
-## Features
-
-- **ECDSA Operations**: Sign and verify messages using the secp256k1 elliptic curve.
-- **Diffie-Hellman Key Exchange**: Compute shared secrets with elliptic curve Diffie-Hellman.
-- **Key Handling**: Verify, create, and add private and public keys.
-- **WASM Support**: High performance via WebAssembly, easily usable in Node.js and the browser.
-- **Blockchain Compatibility**: Works with Bitcoin, Ethereum, and EarthBucks-style keys and signatures.
-
----
+Elliptic curve secp256k1 for ECDSA signatures and Diffie-Hellman, optimized with Rust/WASM.
 
 ## Installation
 
-To install the package in your Node.js or TypeScript project:
-
 ```bash
-npm install earthbucks-secp256k1
+npm install @webbuf/secp256k1
 ```
-
----
 
 ## Usage
 
-### TypeScript/Node.js Example
+### Key Generation
 
 ```typescript
-import { private_key_verify, public_key_create, public_key_verify, shared_secret, ecdsa_sign, ecdsa_verify } from 'earthbucks-secp256k1';
+import { publicKeyCreate, privateKeyVerify, publicKeyVerify } from "@webbuf/secp256k1";
+import { FixedBuf } from "@webbuf/fixedbuf";
 
-// Private key as Uint8Array
-const privKey = new Uint8Array(32).fill(1); // Example private key
-const message = new Uint8Array(32).fill(2); // Example message (digest)
+// Generate random private key
+const privKey = FixedBuf.fromRandom<32>(32);
 
-// Verify the private key
-console.log(private_key_verify(privKey)); // true
+// Verify private key is valid
+privateKeyVerify(privKey); // true
 
-// Create a public key from the private key
-const pubKey = public_key_create(privKey);
-console.log('Public Key:', new Uint8Array(pubKey));
+// Derive public key (compressed, 33 bytes)
+const pubKey = publicKeyCreate(privKey);
 
-// Verify the public key
-console.log(public_key_verify(pubKey)); // true
-
-// Sign a message with the private key
-const signature = ecdsa_sign(message, privKey);
-console.log('Signature:', new Uint8Array(signature));
-
-// Verify the signature with the public key and message
-console.log(ecdsa_verify(signature, message, pubKey)); // true
-
-// Perform Diffie-Hellman key exchange with another public key
-const otherPubKey = public_key_create(new Uint8Array(32).fill(2)); // Another example public key
-const sharedSecret = shared_secret(privKey, otherPubKey);
-console.log('Shared Secret:', new Uint8Array(sharedSecret));
+// Verify public key
+publicKeyVerify(pubKey); // true
 ```
 
-### API Documentation
+### Signing and Verification
 
-- **`private_key_verify(priv_key_buf: Uint8Array): boolean`**  
-  Verifies whether a 32-byte private key is valid.
+```typescript
+import { sign, verify, publicKeyCreate } from "@webbuf/secp256k1";
+import { FixedBuf } from "@webbuf/fixedbuf";
 
-- **`public_key_verify(pub_key_buf: Uint8Array): boolean`**  
-  Verifies a 33-byte compressed public key in SEC1 format.
+const privKey = FixedBuf.fromRandom<32>(32);
+const pubKey = publicKeyCreate(privKey);
 
-- **`public_key_create(priv_key_buf: Uint8Array): Uint8Array`**  
-  Generates a public key from a 32-byte private key and returns it in compressed SEC1 format.
+// Message hash (must be 32 bytes)
+const messageHash = FixedBuf.fromRandom<32>(32);
 
-- **`private_key_add(priv_key_buf_1: Uint8Array, priv_key_buf_2: Uint8Array): Uint8Array`**  
-  Adds two private keys together and returns the resulting private key.
+// Nonce k (use RFC 6979 in production!)
+const k = FixedBuf.fromRandom<32>(32);
 
-- **`public_key_add(pub_key_buf_1: Uint8Array, pub_key_buf_2: Uint8Array): Uint8Array`**  
-  Adds two public keys together (both in compressed SEC1 format) and returns the result.
+// Sign: returns 64-byte signature
+const signature = sign(messageHash, privKey, k);
 
-- **`ecdsa_sign(digest: Uint8Array, priv_key_buf: Uint8Array): Uint8Array`**  
-  Signs a 32-byte message digest with a private key and returns the 64-byte signature.
-
-- **`ecdsa_verify(sig_buf: Uint8Array, digest: Uint8Array, pub_key_buf: Uint8Array): boolean`**  
-  Verifies the provided signature, digest, and public key.
-
-- **`shared_secret(priv_key_buf: Uint8Array, pub_key_buf: Uint8Array): Uint8Array`**  
-  Performs elliptic curve Diffie-Hellman (ECDH) to compute a shared secret between a private key and a public key.
-
----
-
-## Running Tests
-
-To ensure the library works as expected, run the tests:
-
-```bash
-npm test
+// Verify signature
+verify(signature, messageHash, pubKey); // true
 ```
 
----
+### Diffie-Hellman Key Exchange
+
+```typescript
+import { sharedSecret, publicKeyCreate } from "@webbuf/secp256k1";
+import { FixedBuf } from "@webbuf/fixedbuf";
+
+const alicePriv = FixedBuf.fromRandom<32>(32);
+const bobPriv = FixedBuf.fromRandom<32>(32);
+
+const alicePub = publicKeyCreate(alicePriv);
+const bobPub = publicKeyCreate(bobPriv);
+
+// Both derive the same shared secret
+const secretA = sharedSecret(alicePriv, bobPub);
+const secretB = sharedSecret(bobPriv, alicePub);
+// secretA equals secretB
+```
+
+### Key Addition
+
+```typescript
+import { privateKeyAdd, publicKeyAdd, publicKeyCreate } from "@webbuf/secp256k1";
+import { FixedBuf } from "@webbuf/fixedbuf";
+
+const priv1 = FixedBuf.fromRandom<32>(32);
+const priv2 = FixedBuf.fromRandom<32>(32);
+
+// Add private keys (mod curve order)
+const combinedPriv = privateKeyAdd(priv1, priv2);
+
+// Add public keys (point addition)
+const pub1 = publicKeyCreate(priv1);
+const pub2 = publicKeyCreate(priv2);
+const combinedPub = publicKeyAdd(pub1, pub2);
+```
+
+## API
+
+| Function | Description |
+|----------|-------------|
+| `privateKeyVerify(key: FixedBuf<32>): boolean` | Check if private key is valid |
+| `publicKeyVerify(key: FixedBuf<33>): boolean` | Check if public key is valid |
+| `publicKeyCreate(privKey: FixedBuf<32>): FixedBuf<33>` | Derive public key |
+| `privateKeyAdd(key1, key2): FixedBuf<32>` | Add two private keys |
+| `publicKeyAdd(key1, key2): FixedBuf<33>` | Add two public keys |
+| `sign(hash, privKey, k): FixedBuf<64>` | Sign with nonce k |
+| `verify(sig, hash, pubKey): boolean` | Verify signature |
+| `sharedSecret(privKey, pubKey): FixedBuf<33>` | ECDH shared secret |
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for more information.
-
----
-
-## Contributing
-
-Contributions are welcome! Please open an issue or submit a pull request.
-
----
-
-This updated `README` includes instructions for using the WASM functions re-exported in TypeScript, along with the updated API and usage examples for Node.js projects. Let me know if you need further adjustments!
+MIT

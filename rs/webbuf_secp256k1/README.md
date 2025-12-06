@@ -1,179 +1,111 @@
-# `webbuf_secp256k1` Library
+# webbuf_secp256k1
 
-`webbuf_secp256k1` is a Rust library that provides ECDSA functionality for the
-secp256k1 elliptic curve used in Bitcoin, Ethereum, and EarthBucks. The library
-is designed to work with both Rust and JavaScript/TypeScript, with optional
-WebAssembly (WASM) support. It includes key operations, message
-signing/verification, Diffie-Hellman, and public/private key validation.
-
----
-
-## Features
-
-- **ECDSA Operations**: Sign and verify messages using secp256k1.
-- **Diffie-Hellman**: Perform elliptic curve Diffie-Hellman key exchange to
-  derive shared secrets.
-- **Key Handling**: Verify, create, and add private/public keys.
-- **WASM Support**: Use the library in JavaScript by enabling the `wasm`
-  feature.
-- **Blockchain Compatibility**: Works with Bitcoin/Ethereum-style keys and
-  signatures.
-- **Dual Use**: Compatible with both Rust backends and JavaScript frontends.
-
----
+Elliptic curve secp256k1 for ECDSA signatures and Diffie-Hellman key exchange, for Rust and WebAssembly.
 
 ## Installation
 
-For Rust-only usage:
-
 ```toml
 [dependencies]
-webbuf_secp256k1 = "0.8.0"
+webbuf_secp256k1 = "0.13"
 ```
-
-To enable WASM support:
-
-```toml
-[dependencies]
-webbuf_secp256k1 = { version = "0.8.0", features = ["wasm"] }
-```
-
----
 
 ## Usage
 
-### Rust Example
+### Key Generation
 
 ```rust
-use webbuf_secp256k1::{private_key_verify, public_key_create, public_key_verify, ecdsa_sign, ecdsa_verify};
+use webbuf_secp256k1::secp256k1::{
+    private_key_verify, public_key_verify, public_key_create
+};
 
-// Verify a private key
-let valid_key = [0x01; 32];
-assert!(private_key_verify(&valid_key));
+// Verify a private key (must be 32 bytes, valid scalar)
+let priv_key = [0x01u8; 32];
+assert!(private_key_verify(&priv_key));
 
-// Create a public key from a private key
-let public_key = public_key_create(&valid_key).unwrap();
-println!("Public key: {:?}", public_key);
+// Derive public key from private key (compressed, 33 bytes)
+let pub_key = public_key_create(&priv_key).unwrap();
+assert_eq!(pub_key.len(), 33);
 
-// Verify the public key
-assert!(public_key_verify(&public_key));
-
-// Sign a message
-let message = [0x02; 32];
-let signature = ecdsa_sign(&message, &valid_key).unwrap();
-println!("Signature: {:?}", signature);
-
-// Verify the signature
-assert!(ecdsa_verify(&signature, &message, &public_key).unwrap());
+// Verify a public key
+assert!(public_key_verify(&pub_key));
 ```
 
-### Diffie-Hellman Example (Rust)
+### Signing and Verification
 
 ```rust
-use webbuf_secp256k1::{public_key_create, shared_secret};
+use webbuf_secp256k1::secp256k1::{sign, verify, public_key_create};
 
-// Two private keys
-let priv_key_1 = [0x38, 0x49, 0x58, 0x49, 0xf8, 0x38, 0xe8, 0xd5, 0xf8, 0xc9, 0x4d, 0xf2, 0x7a, 0x3c, 0x91, 0x8d,
-                  0x8e, 0xe9, 0x6a, 0xbf, 0x6b, 0x74, 0x5f, 0xb5, 0x4d, 0x82, 0x1b, 0xf9, 0x5b, 0x6e, 0x5d, 0xc3];
-let priv_key_2 = [0x55, 0x91, 0x22, 0x55, 0x18, 0xa9, 0x19, 0xf0, 0x2a, 0x3f, 0x8c, 0x9a, 0x7a, 0x1b, 0xc1, 0xe2,
-                  0x9d, 0x81, 0x3c, 0xd8, 0x5a, 0x39, 0xe7, 0xaa, 0x89, 0x9d, 0xf4, 0x64, 0x5e, 0x4a, 0x6b, 0x91];
+let priv_key = [0x01u8; 32];
+let hash = [0x02u8; 32]; // 32-byte message hash
+let k = [0x03u8; 32];    // 32-byte nonce (use RFC 6979 in production!)
 
-// Derive public keys
-let pub_key_1 = public_key_create(&priv_key_1).unwrap();
-let pub_key_2 = public_key_create(&priv_key_2).unwrap();
+// Sign: returns 64-byte signature (r || s)
+let signature = sign(&hash, &priv_key, &k).unwrap();
+assert_eq!(signature.len(), 64);
 
-// Both parties compute the shared secret using the other's public key
-let shared_secret_1 = shared_secret(&priv_key_1, &pub_key_2).unwrap();
-let shared_secret_2 = shared_secret(&priv_key_2, &pub_key_1).unwrap();
-
-// Verify that both shared secrets are the same
-assert_eq!(shared_secret_1, shared_secret_2);
-println!("Shared secret: {:?}", shared_secret_1);
+// Verify signature
+let pub_key = public_key_create(&priv_key).unwrap();
+assert!(verify(&signature, &hash, &pub_key).is_ok());
 ```
 
----
+### Diffie-Hellman Key Exchange
 
-### JavaScript/TypeScript Example (with WASM)
+```rust
+use webbuf_secp256k1::secp256k1::{shared_secret, public_key_create};
 
-```javascript
-import init, {
-  private_key_verify,
-  public_key_create,
-  public_key_verify,
-  ecdsa_sign,
-  ecdsa_verify,
-} from "./your-wasm-package";
+let alice_priv = [0x01u8; 32];
+let bob_priv = [0x02u8; 32];
 
-async function example() {
-  await init(); // Initialize the WASM module
+let alice_pub = public_key_create(&alice_priv).unwrap();
+let bob_pub = public_key_create(&bob_priv).unwrap();
 
-  const privKey = new Uint8Array(32).fill(1);
-  console.log(private_key_verify(privKey)); // true
-
-  const pubKey = public_key_create(privKey);
-  console.log("Public Key:", new Uint8Array(pubKey));
-
-  console.log(public_key_verify(pubKey)); // true
-
-  const message = new Uint8Array(32).fill(2);
-  const signature = ecdsa_sign(message, privKey);
-  console.log("Signature:", new Uint8Array(signature));
-
-  console.log(ecdsa_verify(signature, message, pubKey)); // true
-}
-
-example();
+// Both parties derive the same shared secret
+let secret_a = shared_secret(&alice_priv, &bob_pub).unwrap();
+let secret_b = shared_secret(&bob_priv, &alice_pub).unwrap();
+assert_eq!(secret_a, secret_b);
 ```
 
----
+### Key Addition
+
+```rust
+use webbuf_secp256k1::secp256k1::{private_key_add, public_key_add, public_key_create};
+
+let priv1 = [0x01u8; 32];
+let priv2 = [0x02u8; 32];
+
+// Add private keys (mod curve order)
+let combined_priv = private_key_add(&priv1, &priv2).unwrap();
+
+// Add public keys (point addition)
+let pub1 = public_key_create(&priv1).unwrap();
+let pub2 = public_key_create(&priv2).unwrap();
+let combined_pub = public_key_add(&pub1, &pub2).unwrap();
+```
 
 ## API
 
-### `shared_secret(priv_key_buf: &[u8], pub_key_buf: &[u8]) -> Result<Vec<u8>, String>`
+| Function | Description |
+|----------|-------------|
+| `private_key_verify(key: &[u8]) -> bool` | Check if 32-byte key is valid |
+| `public_key_verify(key: &[u8]) -> bool` | Check if 33-byte compressed key is valid |
+| `public_key_create(priv_key: &[u8]) -> Result<Vec<u8>, String>` | Derive public key |
+| `private_key_add(key1: &[u8], key2: &[u8]) -> Result<Vec<u8>, String>` | Add two private keys |
+| `public_key_add(key1: &[u8], key2: &[u8]) -> Result<Vec<u8>, String>` | Add two public keys |
+| `sign(hash: &[u8], priv_key: &[u8], k: &[u8]) -> Result<Vec<u8>, String>` | Sign hash with nonce k |
+| `verify(sig: &[u8], hash: &[u8], pub_key: &[u8]) -> Result<(), String>` | Verify signature |
+| `shared_secret(priv_key: &[u8], pub_key: &[u8]) -> Result<Vec<u8>, String>` | ECDH shared secret |
 
-Derives a shared secret using the Diffie-Hellman key exchange. It takes a
-private key (32 bytes) and a public key (33 bytes in compressed SEC1 format),
-returning a shared secret.
+## WebAssembly
 
----
+Build with the `wasm` feature for WebAssembly support:
 
-## Tests
-
-To run the tests:
-
-```bash
-cargo test
+```toml
+[dependencies]
+webbuf_secp256k1 = { version = "0.13", features = ["wasm"] }
 ```
 
-Example test for Diffie-Hellman:
-
-```rust
-#[test]
-fn test_diffie_hellman_shared_secret() {
-    let priv_key_1 = [0x38, 0x49, 0x58, 0x49, 0xf8, 0x38, 0xe8, 0xd5, 0xf8, 0xc9, 0x4d, 0xf2, 0x7a, 0x3c, 0x91, 0x8d,
-                      0x8e, 0xe9, 0x6a, 0xbf, 0x6b, 0x74, 0x5f, 0xb5, 0x4d, 0x82, 0x1b, 0xf9, 0x5b, 0x6e, 0x5d, 0xc3];
-    let priv_key_2 = [0x55, 0x91, 0x22, 0x55, 0x18, 0xa9, 0x19, 0xf0, 0x2a, 0x3f, 0x8c, 0x9a, 0x7a, 0x1b, 0xc1, 0xe2,
-                      0x9d, 0x81, 0x3c, 0xd8, 0x5a, 0x39, 0xe7, 0xaa, 0x89, 0x9d, 0xf4, 0x64, 0x5e, 0x4a, 0x6b, 0x91];
-
-    let pub_key_1 = public_key_create(&priv_key_1).unwrap();
-    let pub_key_2 = public_key_create(&priv_key_2).unwrap();
-
-    let shared_secret_1 = shared_secret(&priv_key_1, &pub_key_2).unwrap();
-    let shared_secret_2 = shared_secret(&priv_key_2, &pub_key_1).unwrap();
-
-    assert_eq!(shared_secret_1, shared_secret_2);
-}
-```
-
----
+The TypeScript wrapper is available as `@webbuf/secp256k1` on npm.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for more
-information.
-
----
-
-## Contributing
-
-Contributions are welcome! Please open issues or submit pull requests.
+MIT

@@ -1,15 +1,8 @@
 # @webbuf/numbers
 
-`@webbuf/numbers` is a TypeScript/JavaScript library for working with fixed-size
-unsigned integers. This library provides support for several unsigned integer
-types (e.g., `U8`, `U16`, `U32`, `U64`, `U128`, `U256`) and allows users to
-perform common mathematical operations.
-
-Signed integers and floating-point support are planned for future releases.
+Fixed-size unsigned integers with big-endian and little-endian support.
 
 ## Installation
-
-You can install the package from npm:
 
 ```bash
 npm install @webbuf/numbers
@@ -17,121 +10,72 @@ npm install @webbuf/numbers
 
 ## Usage
 
-The `@webbuf/numbers` package provides classes for fixed-size unsigned integers.
-Each class supports the following features:
-
-- **Basic arithmetic operations**: `add`, `sub`, `mul`, `div`
-- **BigInt conversion**: Convert to and from `BigInt`
-- **Binary data encoding**: Convert to and from big-endian and little-endian
-  formats
-- **Hexadecimal conversion**: Convert to and from hexadecimal strings
-
-### Importing the Package
-
 ```typescript
-import { U8, U16, U32, U64, U128, U256 } from "@webbuf/numbers";
+import { U8, U16BE, U16LE, U32BE, U32LE, U64BE, U64LE, U128BE, U128LE, U256BE, U256LE } from "@webbuf/numbers";
+
+// Create from number or bigint
+const a = U32BE.fromN(1000);
+const b = U64BE.fromBn(0x123456789abcdef0n);
+
+// Arithmetic
+const sum = a.add(U32BE.fromN(500));
+const diff = a.sub(U32BE.fromN(100));
+const product = a.mul(U32BE.fromN(2));
+const quotient = a.div(U32BE.fromN(10));
+
+// Convert to number/bigint
+a.n;   // 1000 (number)
+a.bn;  // 1000n (bigint)
+
+// Buffer conversions
+const beBuf = a.toBEBuf();  // Big-endian FixedBuf
+const leBuf = a.toLEBuf();  // Little-endian FixedBuf
+const restored = U32BE.fromBEBuf(beBuf);
+
+// Hex conversions
+const hex = a.toHex();          // "000003e8"
+const fromHex = U32BE.fromHex("000003e8");
 ```
 
-### Creating Unsigned Integers
+## Types
 
-You can create instances from `BigInt` or `number` values using the `fromBn` and
-`fromN` static methods, respectively. Note that numbers are automatically
-converted to `BigInt` and may lose precision.
+| Type | Size | Range |
+|------|------|-------|
+| `U8` | 1 byte | 0 to 255 |
+| `U16BE`, `U16LE` | 2 bytes | 0 to 65,535 |
+| `U32BE`, `U32LE` | 4 bytes | 0 to 4,294,967,295 |
+| `U64BE`, `U64LE` | 8 bytes | 0 to 2^64-1 |
+| `U128BE`, `U128LE` | 16 bytes | 0 to 2^128-1 |
+| `U256BE`, `U256LE` | 32 bytes | 0 to 2^256-1 |
 
-```typescript
-const uint8 = U8.fromN(255);
-const uint64 = U64.fromBn(1024n);
-```
+`BE` = Big Endian, `LE` = Little Endian
 
-### Converting to BigInt
+## API
 
-Use the `toBn()` method to retrieve the value as a `BigInt`:
+### Static Methods
 
-```typescript
-const bigIntValue = uint64.toBn(); // 1024n
-```
+| Method | Description |
+|--------|-------------|
+| `fromN(n)` | Create from number |
+| `fromBn(bn)` | Create from bigint |
+| `fromBEBuf(buf)` | Create from big-endian buffer |
+| `fromLEBuf(buf)` | Create from little-endian buffer |
+| `fromHex(hex)` | Create from hex string |
 
-### Arithmetic Operations
+### Instance Properties/Methods
 
-Each class supports basic arithmetic operations such as addition, subtraction,
-multiplication, and division.
-
-```typescript
-const a = U16.fromN(1000);
-const b = U16.fromN(500);
-const result = a.add(b); // U16 instance with value 1500
-```
-
-### Encoding to and from Buffers
-
-For applications needing binary encoding, use the `toBEBuf()` and `toLEBuf()`
-methods to convert to big-endian and little-endian formats, respectively.
-
-```typescript
-const buffer = uint16.toBEBuf(); // Big-endian representation
-const uint16FromBuf = U16.fromBEBuf(buffer); // Reconstructed from buffer
-```
-
-### Hexadecimal Representation
-
-Each integer class can convert to and from hexadecimal strings:
-
-```typescript
-const hexString = uint32.toHex(); // Hexadecimal string representation
-const uint32FromHex = U32.fromHex(hexString); // Reconstruct from hex
-```
-
-## API Documentation
-
-### FixedNum (Abstract Class)
-
-The `FixedNum` abstract class provides a foundation for unsigned integer classes
-and defines the following core methods and properties:
-
-- **Constructor**: Initializes an instance with a buffer of fixed size.
-- **toBn()**: Converts the instance value to `BigInt`.
-- **add(other: FixedNum<N>)**: Adds another instance of the same type.
-- **sub(other: FixedNum<N>)**: Subtracts another instance of the same type.
-- **mul(other: FixedNum<N>)**: Multiplies by another instance of the same type.
-- **div(other: FixedNum<N>)**: Divides by another instance of the same type.
-- **toBEBuf()**: Returns a big-endian `FixedBuf`.
-- **toLEBuf()**: Returns a little-endian `FixedBuf`.
-- **toHex()**: Returns a hexadecimal string of the value.
-
-### U8, U16, U32, U64, U128, U256
-
-Each of these classes extends `FixedNum` with specific byte lengths:
-
-- **U8**: 8-bit unsigned integer
-- **U16**: 16-bit unsigned integer
-- **U32**: 32-bit unsigned integer
-- **U64**: 64-bit unsigned integer
-- **U128**: 128-bit unsigned integer
-- **U256**: 256-bit unsigned integer
-
-Example usage:
-
-```typescript
-const uint8 = U8.fromN(42);
-const uint16 = U16.fromBn(1000n);
-console.log(uint8.toBn()); // 42n
-console.log(uint16.toBn()); // 1000n
-```
-
-## Future Enhancements
-
-- **Signed Integer Support**: Signed integer classes, allowing the
-  representation of both positive and negative values, are planned for future
-  versions.
-- **Floating-Point Support**: IEEE-754 floating-point support will be added to
-  extend the range of numbers.
-
-## Contributing
-
-Contributions are welcome! If you’d like to improve the library, feel free to
-open an issue or create a pull request on the
-[GitHub repository](https://github.com/your-username/webbuf-numbers).
+| Property/Method | Description |
+|-----------------|-------------|
+| `n` | Get value as number |
+| `bn` | Get value as bigint |
+| `add(other)` | Add |
+| `sub(other)` | Subtract |
+| `mul(other)` | Multiply |
+| `div(other)` | Divide |
+| `toBEBuf()` | Convert to big-endian buffer |
+| `toLEBuf()` | Convert to little-endian buffer |
+| `toHex()` | Convert to hex string |
 
 ## License
 
-This project is licensed under the MIT License.
+MIT
