@@ -1917,6 +1917,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "webbuf_sha256"
+version = "0.12.95"
+dependencies = [
+ "hex",
+ "hmac",
+ "sha2",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "webpki-roots"
 version = "0.26.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

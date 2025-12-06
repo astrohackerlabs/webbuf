@@ -5,6 +5,7 @@ members = [
     "webbuf_blake3",
     "webbuf_ripemd160",
     "webbuf_secp256k1",
+    "webbuf_sha256",
 ]
 resolver = "2"
 
@@ -17,3 +18,4 @@ webbuf_aescbc = { path = "./webbuf_aescbc" }
 webbuf_blake3 = { path = "./webbuf_blake3" }
 webbuf_ripemd160 = { path = "./webbuf_ripemd160" }
 webbuf_secp256k1 = { path = "./webbuf_secp256k1" }
+webbuf_sha256 = { path = "./webbuf_sha256" }

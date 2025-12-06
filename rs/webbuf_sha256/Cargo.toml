@@ -1,0 +1,23 @@
+[package]
+name = "webbuf_sha256"
+description = "SHA-256 hash and HMAC-SHA256 for WebBuf with optional support for WASM."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Ryan X. Charles <ryan@ryanxcharles.com>"]
+repository = "https://github.com/ryanxcharles/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+sha2 = "0.10"
+hmac = "0.12"
+hex = "0.4.3"
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+optional = true
