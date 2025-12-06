@@ -29,11 +29,13 @@ webbuf repository.
 
 Core buffer type with hex/base64 encoding.
 
-- [ ] Verify hex encoding matches standard (compare with Node.js Buffer)
-- [ ] Verify base64 encoding matches standard (compare with Node.js Buffer)
-- [ ] Verify UTF-8 encoding/decoding matches standard
-- [ ] Test round-trip for all encoding types
-- [ ] Test edge cases: empty buffers, large buffers, special characters
+- [x] Verify hex encoding matches standard (compare with Node.js Buffer)
+- [x] Verify base64 encoding matches standard (compare with Node.js Buffer)
+- [x] Verify UTF-8 encoding/decoding matches standard
+- [x] Test round-trip for all encoding types
+- [x] Test edge cases: empty buffers, large buffers, special characters
+
+Audit tests: `ts/npm-webbuf-webbuf/test/audit.test.ts` (76 tests)
 
 ### @webbuf/fixedbuf
 
