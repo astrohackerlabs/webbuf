@@ -139,12 +139,25 @@ Tests cover:
 
 RIPEMD-160 hash.
 
-- [ ] Add test vectors from original RIPEMD-160 paper
-  - URL: https://homes.esat.kuleuven.be/~boslat/ripemd160.html
-- [ ] Compare with Node.js crypto module or another implementation
-- [ ] Test empty input
-- [ ] Test the standard test string "abc" → known hash
-- [ ] Test the standard test string "message digest" → known hash
+- [x] Add test vectors from original RIPEMD-160 specification
+  - URL: https://homes.esat.kuleuven.be/~bosselae/ripemd160.html
+- [x] Compare with ripemd160-js library
+- [x] Test empty input
+- [x] Test the standard test string "abc" → known hash
+- [x] Test the standard test string "message digest" → known hash
+
+Audit tests: `ts/npm-webbuf-ripemd160/test/audit.test.ts` (36 tests)
+
+Tests cover:
+- All 9 official RIPEMD-160 test vectors (empty, "a", "abc", "message digest",
+  alphabet, extended pattern, alphanumeric, 8x "1234567890", 1 million "a"s)
+- doubleRipemd160Hash correctness verification
+- Comparison with ripemd160-js library for various input sizes
+- Output size consistency (always 20 bytes)
+- Determinism and collision resistance properties
+- Bitcoin-style usage (33-byte compressed pubkey, 65-byte uncompressed pubkey)
+- Block boundary tests (55, 56, 63, 64, 65, 128 bytes)
+- Edge cases (all zeros, all 0xFF, 100KB input)
 
 ### @webbuf/secp256k1
 
