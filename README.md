@@ -32,6 +32,8 @@ npm install @webbuf/webbuf @webbuf/fixedbuf @webbuf/sha256 # etc.
 | `@webbuf/aescbc`    | AES-CBC encryption (no authentication)                             |
 | `@webbuf/acb3`      | AES-CBC + BLAKE3 MAC (authenticated encryption)                    |
 | `@webbuf/acb3dh`    | ACB3 + ECDH key exchange                                           |
+| `@webbuf/acs2`      | AES-CBC + SHA-256 HMAC (authenticated encryption)                  |
+| `@webbuf/acs2dh`    | ACS2 + ECDH key exchange                                           |
 
 ---
 
@@ -443,8 +445,24 @@ webbuf/
     ├── npm-webbuf-aescbc/      # @webbuf/aescbc
     ├── npm-webbuf-acb3/        # @webbuf/acb3
     ├── npm-webbuf-acb3dh/      # @webbuf/acb3dh
+    ├── npm-webbuf-acs2/        # @webbuf/acs2
+    ├── npm-webbuf-acs2dh/      # @webbuf/acs2dh
     └── npm-webbuf/             # webbuf (re-exports all)
 ```
+
+## Security Audits
+
+The webbuf library undergoes rigorous security auditing to verify correctness of
+all cryptographic implementations. Each package is tested against official test
+vectors, cross-verified with trusted implementations, and checked for proper
+security properties.
+
+| Audit | Date | Packages | Tests | Bugs Found |
+|-------|------|----------|-------|------------|
+| [December 2024](./audits/2024-12-audit.md) | Dec 2024 | 13 | 598 | 2 (fixed) |
+
+For more information about our audit process and methodology, see the
+[audits README](./audits/README.md).
 
 ## License
 
