@@ -74,10 +74,21 @@ They were checking against `0xffffffffffffffffn` (U64 max) instead of
 
 Buffer reader/writer utilities.
 
-- [ ] Verify BufWriter produces correct output for all types
-- [ ] Verify BufReader reads back what BufWriter wrote
-- [ ] Test variable-length integer encoding (if applicable)
-- [ ] Test boundary conditions (reading past end of buffer)
+- [x] Verify BufWriter produces correct output for all types
+- [x] Verify BufReader reads back what BufWriter wrote
+- [x] Test variable-length integer encoding (VarInt)
+- [x] Test boundary conditions (reading past end of buffer)
+
+Audit tests: `ts/npm-webbuf-rw/test/audit.test.ts` (65 tests)
+
+Tests cover:
+- Round-trip tests for U8, U16BE, U32BE, U64BE, U128BE, U256BE
+- Boundary conditions (empty buffer, insufficient bytes)
+- Position tracking and eof() behavior
+- VarInt encoding/decoding with minimal encoding enforcement
+- Mixed type serialization
+- readFixed and readRemainder functionality
+- Data integrity (read returns independent copies)
 
 ### @webbuf/blake3
 
