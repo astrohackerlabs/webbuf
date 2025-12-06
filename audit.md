@@ -41,9 +41,15 @@ Audit tests: `ts/npm-webbuf-webbuf/test/audit.test.ts` (76 tests)
 
 Fixed-size buffer wrapper.
 
-- [ ] Verify size enforcement (reject wrong sizes)
-- [ ] Verify `fromRandom()` produces correct length
-- [ ] Test `fromBuf()` with exact size, oversized, and undersized inputs
+- [x] Verify size enforcement (reject wrong sizes)
+- [x] Verify `fromRandom()` produces correct length
+- [x] Test `fromBuf()` with exact size, oversized, and undersized inputs
+
+Audit tests: `ts/npm-webbuf-fixedbuf/test/audit.test.ts` (52 tests)
+
+**BUG FOUND:** `clone()` method creates a shared view instead of an independent
+copy. The fix would be to change `WebBuf.from(this._buf)` to
+`new WebBuf(this._buf)` in `fixedbuf.ts:56`.
 
 ### @webbuf/numbers
 
