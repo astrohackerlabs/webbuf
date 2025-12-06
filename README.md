@@ -505,7 +505,7 @@ security properties.
 
 | Audit                                      | Date     | Packages | Tests | Bugs Found |
 | ------------------------------------------ | -------- | -------- | ----- | ---------- |
-| [December 2024](./audits/2024-12-audit.md) | Dec 2024 | 13       | 598   | 2 (fixed)  |
+| [December 2025](./audits/2025-12-audit.md) | Dec 2025 | 13       | 598   | 2 (fixed)  |
 
 For more information about our audit process and methodology, see the
 [audits README](./audits/README.md).

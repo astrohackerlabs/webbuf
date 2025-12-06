@@ -17,7 +17,7 @@ testing against:
 
 | Date | Report | Packages | Tests | Bugs Found |
 |------|--------|----------|-------|------------|
-| December 2024 | [2024-12-audit.md](./2024-12-audit.md) | 13 | 598 | 2 (fixed) |
+| December 2025 | [2025-12-audit.md](./2025-12-audit.md) | 13 | 598 | 2 (fixed) |
 
 ## Running Audit Tests
 
