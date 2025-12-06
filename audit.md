@@ -94,12 +94,24 @@ Tests cover:
 
 BLAKE3 hash and MAC.
 
-- [ ] Add official BLAKE3 test vectors from
+- [x] Add official BLAKE3 test vectors from
       https://github.com/BLAKE3-team/BLAKE3
-- [ ] Test empty input
-- [ ] Test various input lengths (1 byte, 64 bytes, 1024 bytes, etc.)
-- [ ] Verify keyed hash (MAC) against official test vectors
-- [ ] Compare output with reference implementation or another library
+- [x] Test empty input
+- [x] Test various input lengths (1 byte, 64 bytes, 1024 bytes, etc.)
+- [x] Verify keyed hash (MAC) against official test vectors
+- [x] Compare output with reference implementation or another library
+
+Audit tests: `ts/npm-webbuf-blake3/test/audit.test.ts` (53 tests)
+
+Tests cover:
+- 18 official hash test vectors (0, 1-8, 63-65, 127-129, 1023-1025 bytes)
+- 18 official keyed_hash (MAC) test vectors with standard test key
+- doubleBlake3Hash correctness verification
+- Output size consistency (always 32 bytes)
+- Determinism verification
+- Collision resistance (basic tests)
+- MAC key sensitivity
+- Edge cases (empty, large 100KB, all zeros, all 0xFF)
 
 ### @webbuf/sha256
 
