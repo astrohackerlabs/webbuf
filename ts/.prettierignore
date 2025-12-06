@@ -1,0 +1,5 @@
+dist/
+node_modules/
+**/rs-*-bundler/
+**/rs-*-inline-base64/
+pnpm-lock.yaml
