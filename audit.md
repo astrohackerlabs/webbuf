@@ -191,15 +191,34 @@ Tests cover:
 
 AES-CBC encryption.
 
-- [ ] Add NIST CAVP test vectors for AES-CBC
+- [x] Add NIST CAVP test vectors for AES-CBC
   - URL:
     https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
   - Test AES-128-CBC, AES-192-CBC, AES-256-CBC
-- [ ] Web Crypto interop: encrypt with webbuf, decrypt with Web Crypto
-- [ ] Web Crypto interop: encrypt with Web Crypto, decrypt with webbuf
-- [ ] Verify IV is correctly prepended/extracted
-- [ ] Verify PKCS7 padding is correct
-- [ ] Test block-aligned and non-block-aligned plaintexts
+- [x] Web Crypto interop: encrypt with webbuf, decrypt with Web Crypto
+- [x] Web Crypto interop: encrypt with Web Crypto, decrypt with webbuf
+- [x] Verify IV is correctly prepended/extracted
+- [x] Verify PKCS7 padding is correct
+- [x] Test block-aligned and non-block-aligned plaintexts
+
+Audit tests: `ts/npm-webbuf-aescbc/test/audit.test.ts` (35 tests)
+
+Tests cover:
+- NIST SP 800-38A test vectors for AES-128-CBC, AES-192-CBC, AES-256-CBC
+- Bidirectional Web Crypto interoperability (encrypt/decrypt both ways)
+- Ciphertext comparison with Web Crypto (byte-for-byte match)
+- PKCS7 padding for various plaintext sizes (0, 1, 15, 16, 17 bytes)
+- IV handling (prepending, extraction, random generation)
+- Error handling (short ciphertext, invalid length)
+- All key sizes (128-bit, 192-bit, 256-bit)
+- Round-trip tests for various plaintext sizes (0 to 10000 bytes)
+- Security properties (different keys, wrong key decryption)
+- Determinism verification
+
+NOTE: NIST test vectors are for raw AES-CBC without PKCS7 padding. The webbuf
+implementation correctly applies PKCS7 padding (standard practice), so the
+ciphertext matches the NIST vector for the data portion, plus an additional
+padding block.
 
 ### @webbuf/acb3
 
