@@ -226,13 +226,31 @@ AES-CBC + BLAKE3 MAC (Encrypt-then-MAC).
 
 Construction: `BLAKE3_MAC (32 bytes) || IV (16 bytes) || ciphertext`
 
-- [ ] Verify MAC is computed over `IV || ciphertext` (not just ciphertext)
-- [ ] Single-byte modification to MAC portion causes decryption failure
-- [ ] Single-byte modification to IV portion causes decryption failure
-- [ ] Single-byte modification to ciphertext portion causes decryption failure
-- [ ] Truncated ciphertext is rejected
-- [ ] Minimum length enforcement works correctly
-- [ ] Cross-verify with manual construction using audited primitives
+- [x] Verify MAC is computed over `IV || ciphertext` (not just ciphertext)
+- [x] Single-byte modification to MAC portion causes decryption failure
+- [x] Single-byte modification to IV portion causes decryption failure
+- [x] Single-byte modification to ciphertext portion causes decryption failure
+- [x] Truncated ciphertext is rejected
+- [x] Minimum length enforcement works correctly
+- [x] Cross-verify with manual construction using audited primitives
+
+Audit tests: `ts/npm-webbuf-acb3/test/audit.test.ts` (37 tests)
+
+Tests cover:
+- Construction verification (MAC || IV || ciphertext structure)
+- MAC computed over IV || ciphertext (Encrypt-then-MAC pattern verified)
+- Cross-verification with manual construction using @webbuf/aescbc and @webbuf/blake3
+- MAC tampering detection (first, middle, last byte, all zeros)
+- IV tampering detection (first, last byte)
+- Ciphertext tampering detection (first, middle, last byte)
+- Length validation (minimum 64 bytes, truncated, appended bytes rejected)
+- Key sensitivity (wrong key, single-bit difference)
+- Round-trip tests (empty, single byte, various sizes up to 10KB, UTF-8)
+- IV handling (provided IV, random generation, different IVs)
+- Determinism verification
+- Output size verification for various plaintext sizes
+- Security properties (no plaintext leak, avalanche effect, Encrypt-then-MAC verified)
+- Edge cases (all zeros, all 0xFF, 100KB plaintext, zero key, 0xFF key)
 
 ### @webbuf/acb3dh
 
