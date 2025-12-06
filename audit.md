@@ -256,11 +256,30 @@ Tests cover:
 
 ACB3 + ECDH key exchange.
 
+Key derivation: `BLAKE3(sharedSecret(alicePriv, bobPub))`
+
 - [x] Basic bidirectional encryption test (Alice↔Bob)
-- [ ] Verify derived key matches: `BLAKE3(sharedSecret(alicePriv, bobPub))`
+- [x] Verify derived key matches: `BLAKE3(sharedSecret(alicePriv, bobPub))`
       equals `BLAKE3(sharedSecret(bobPriv, alicePub))`
-- [ ] Third party (Eve) cannot decrypt messages
-- [ ] Different key pairs produce different shared secrets
+- [x] Third party (Eve) cannot decrypt messages
+- [x] Different key pairs produce different shared secrets
+
+Audit tests: `ts/npm-webbuf-acb3dh/test/audit.test.ts` (29 tests)
+
+Tests cover:
+- Key derivation verification (BLAKE3 of ECDH shared secret)
+- Symmetric key derivation from both directions verified
+- Different key pairs produce different derived keys
+- Bidirectional encryption (Alice→Bob, Bob→Alice, same-direction)
+- Third-party (Eve) cannot decrypt with wrong keys
+- Cross-verification with manual construction using @webbuf/acb3 + @webbuf/secp256k1 + @webbuf/blake3
+- Round-trip tests (empty, single byte, various sizes, UTF-8)
+- IV handling (provided IV, random generation)
+- Determinism verification
+- Tamper detection (MAC, IV, ciphertext modifications rejected)
+- Known test vectors with specific private keys
+- Edge cases (large plaintext 50KB, multiple sequential messages, min valid key)
+- Security properties (different recipients get different ciphertext, symmetric communication)
 
 ### @webbuf/acs2
 
