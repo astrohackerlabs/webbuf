@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
+    "@noble/secp256k1": "^3.0.0",
     "@types/node": "^22.13.2",
     "@webbuf/blake3": "workspace:^",
     "buffer": "^6.0.3",

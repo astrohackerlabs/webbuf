@@ -163,14 +163,29 @@ Tests cover:
 
 ECDSA signatures and ECDH key exchange.
 
-- [ ] Cross-implementation test: compare with `@noble/secp256k1`
-- [ ] Add BIP-340 test vectors for Schnorr signatures (if applicable)
-- [ ] Verify `publicKeyCreate()` produces valid compressed public keys
-- [ ] Verify `sign()` produces valid DER-encoded signatures
-- [ ] Verify `verify()` correctly validates signatures
-- [ ] Verify `sharedSecret()` matches other ECDH implementations
-- [ ] Test with known private key → known public key pairs
-- [ ] Test signature verification with invalid signatures (should fail)
+- [x] Cross-implementation test: compare with `@noble/secp256k1`
+- [x] Add BIP-340 test vectors (private key 3 → known public key)
+- [x] Verify `publicKeyCreate()` produces valid compressed public keys
+- [x] Verify `sign()` produces valid 64-byte compact signatures
+- [x] Verify `verify()` correctly validates signatures
+- [x] Verify `sharedSecret()` matches @noble/secp256k1 ECDH
+- [x] Test with known private key → known public key pairs
+- [x] Test signature verification with invalid signatures (should fail)
+
+Audit tests: `ts/npm-webbuf-secp256k1/test/audit.test.ts` (35 tests)
+
+Tests cover:
+- Known test vectors (private keys 1, 2, 3, and published test vector)
+- Cross-implementation verification with @noble/secp256k1 for:
+  - publicKeyCreate (random and edge case keys)
+  - ECDH shared secret computation
+- Signature correctness (sign/verify, wrong digest, wrong pubkey, tampered sig)
+- Private key validation (valid keys, zero, >= curve order n)
+- Public key validation (valid, invalid prefix, all-zero)
+- Key addition for HD wallets (privateKeyAdd, publicKeyAdd homomorphism)
+- ECDH properties (symmetric shared secrets, different keys → different secrets)
+- Output sizes (33-byte pubkey, 64-byte sig, 32-byte privkey)
+- Determinism tests
 
 ### @webbuf/aescbc
 

@@ -111,6 +111,12 @@ const iv = FixedBuf.alloc<16>(16, 0xff);                      // 16 bytes of 0xf
 const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea...");  // From hex (must be exactly 32 bytes)
 const random = FixedBuf.fromRandom<32>(32);                   // 32 cryptographically random bytes
 
+// Shortcut
+const key = FixedBuf.alloc(32);                           // 32 zero bytes
+const iv = FixedBuf.alloc(16, 0xff);                      // 16 bytes of 0xff
+const hash = FixedBuf.fromHex(32, "ba7816bf8f01cfea...");  // From hex (must be exactly 32 bytes)
+const random = FixedBuf.fromRandom(32);                   // 32 cryptographically random bytes
+
 // Access underlying WebBuf
 const webBuf: WebBuf = key.buf;
 
