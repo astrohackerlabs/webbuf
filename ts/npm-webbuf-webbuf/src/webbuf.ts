@@ -368,4 +368,19 @@ export class WebBuf extends Uint8Array {
     verifyOffset(offset, ext, this.length);
     return this.subarray(offset, offset + ext);
   }
+
+  /**
+   * Securely wipe the buffer by filling it with zeros.
+   *
+   * Call this method before releasing references to buffers containing
+   * sensitive data (keys, passwords, etc.) to minimize the window where
+   * sensitive data remains in memory.
+   *
+   * Note: This is a best-effort security measure. JavaScript's JIT compiler
+   * may optimize away the write if it detects the buffer isn't read afterward,
+   * and copies of the data may exist elsewhere in memory.
+   */
+  wipe(): void {
+    this.fill(0);
+  }
 }

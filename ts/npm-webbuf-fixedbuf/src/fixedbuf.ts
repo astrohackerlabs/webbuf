@@ -60,4 +60,19 @@ export class FixedBuf<N extends number> {
     const cloneedReverse = this._buf.toReverse();
     return FixedBuf.fromBuf(this._size, cloneedReverse);
   }
+
+  /**
+   * Securely wipe the buffer by filling it with zeros.
+   *
+   * Call this method before releasing references to buffers containing
+   * sensitive data (keys, passwords, etc.) to minimize the window where
+   * sensitive data remains in memory.
+   *
+   * Note: This is a best-effort security measure. JavaScript's JIT compiler
+   * may optimize away the write if it detects the buffer isn't read afterward,
+   * and copies of the data may exist elsewhere in memory.
+   */
+  wipe(): void {
+    this._buf.fill(0);
+  }
 }
