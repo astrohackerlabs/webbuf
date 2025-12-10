@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, test, expect } from "vitest";
+import { beforeEach, describe, it, expect } from "vitest";
 import { BufWriter } from "../src/buf-writer.js";
 import { BufReader } from "../src/buf-reader.js";
 import { U8, U16BE, U32BE, U64BE, U128BE, U256BE } from "@webbuf/numbers";
@@ -107,14 +107,14 @@ describe("BufWriter", () => {
       const result = BufWriter.varIntU64BEBuf(u64);
       expect(result[0]).toBe(255);
       const readBn =
-        (BigInt(result[1] || 0) << 56n) |
-        (BigInt(result[2] || 0) << 48n) |
-        (BigInt(result[3] || 0) << 40n) |
-        (BigInt(result[4] || 0) << 32n) |
-        (BigInt(result[5] || 0) << 24n) |
-        (BigInt(result[6] || 0) << 16n) |
-        (BigInt(result[7] || 0) << 8n) |
-        BigInt(result[8] || 0);
+        (BigInt(result[1] ?? 0) << 56n) |
+        (BigInt(result[2] ?? 0) << 48n) |
+        (BigInt(result[3] ?? 0) << 40n) |
+        (BigInt(result[4] ?? 0) << 32n) |
+        (BigInt(result[5] ?? 0) << 24n) |
+        (BigInt(result[6] ?? 0) << 16n) |
+        (BigInt(result[7] ?? 0) << 8n) |
+        BigInt(result[8] ?? 0);
       expect(readBn).toBe(u64.bn);
     });
   });

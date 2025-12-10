@@ -27,8 +27,8 @@ describe("WebBuf Benchmarks", () => {
         const startLarge = performance.now();
         const largeHex = largeBuf.toHex();
         const endLarge = performance.now();
-        console.log(`Small: ${endSmall - startSmall} ms`);
-        console.log(`Large: ${endLarge - startLarge} ms`);
+        console.log(`Small: ${String(endSmall - startSmall)} ms`);
+        console.log(`Large: ${String(endLarge - startLarge)} ms`);
         const fromSmallHex = WebBuf.fromHex(smallHex);
         const fromLargeHex = WebBuf.fromHex(largeHex);
         expect(fromSmallHex.toHex()).toBe(smallHex);
@@ -57,8 +57,8 @@ describe("WebBuf Benchmarks", () => {
         const startLarge = performance.now();
         const largeBase64 = largeBuf.toBase64();
         const endLarge = performance.now();
-        console.log(`Small: ${endSmall - startSmall} ms`);
-        console.log(`Large: ${endLarge - startLarge} ms`);
+        console.log(`Small: ${String(endSmall - startSmall)} ms`);
+        console.log(`Large: ${String(endLarge - startLarge)} ms`);
         const fromSmallBase64 = WebBuf.fromBase64(smallBase64);
         const fromLargeBase64 = WebBuf.fromBase64(largeBase64);
         expect(fromSmallBase64.toBase64()).toBe(smallBase64);
@@ -89,8 +89,8 @@ describe("WebBuf Benchmarks", () => {
         const startLarge = performance.now();
         const fromLargeHex = WebBuf.fromHex(largeHex);
         const endLarge = performance.now();
-        console.log(`Small: ${endSmall - startSmall} ms`);
-        console.log(`Large: ${endLarge - startLarge} ms`);
+        console.log(`Small: ${String(endSmall - startSmall)} ms`);
+        console.log(`Large: ${String(endLarge - startLarge)} ms`);
         expect(fromSmallHex.toHex()).toBe(smallHex);
         expect(fromLargeHex.toHex()).toBe(largeHex);
       }
@@ -132,8 +132,8 @@ describe("WebBuf Benchmarks", () => {
         const startLarge = performance.now();
         const fromLargeBase64 = WebBuf.fromBase64(largeBase64);
         const endLarge = performance.now();
-        console.log(`Small: ${endSmall - startSmall} ms`);
-        console.log(`Large: ${endLarge - startLarge} ms`);
+        console.log(`Small: ${String(endSmall - startSmall)} ms`);
+        console.log(`Large: ${String(endLarge - startLarge)} ms`);
         expect(fromSmallBase64.toBase64()).toBe(smallBase64);
         expect(fromLargeBase64.toBase64()).toBe(largeBase64);
       }
@@ -154,13 +154,13 @@ describe("WebBuf Benchmarks", () => {
       const startNpm = performance.now();
       const base64Npm = npmBuffer.toString("base64");
       const endNpm = performance.now();
-      console.log(`Npm method time: ${endNpm - startNpm} ms`);
+      console.log(`Npm method time: ${String(endNpm - startNpm)} ms`);
 
       // wasm methods
       const startWasm = performance.now();
       const base64Wasm = wasmBuffer.toString("base64");
       const endWasm = performance.now();
-      console.log(`Wasm method time: ${endWasm - startWasm} ms`);
+      console.log(`Wasm method time: ${String(endWasm - startWasm)} ms`);
 
       expect(base64Npm).toBe(base64Wasm);
     });
@@ -178,13 +178,13 @@ describe("WebBuf Benchmarks", () => {
       const startNpm = performance.now();
       const decodedNpm = NpmBuffer.from(base64, "base64");
       const endNpm = performance.now();
-      console.log(`Npm method time: ${endNpm - startNpm} ms`);
+      console.log(`Npm method time: ${String(endNpm - startNpm)} ms`);
 
       // wasm methods
       const startWasm = performance.now();
       const decodedWasm = WebBuf.from(base64, "base64");
       const endWasm = performance.now();
-      console.log(`Wasm method time: ${endWasm - startWasm} ms`);
+      console.log(`Wasm method time: ${String(endWasm - startWasm)} ms`);
 
       // Make sure they are all equal
       expect(NpmBuffer.from(decodedWasm).toString("hex")).toBe(
@@ -205,13 +205,13 @@ describe("WebBuf Benchmarks", () => {
       const startNpm = performance.now();
       const hexNpm = npmBuffer.toString("hex");
       const endNpm = performance.now();
-      console.log(`Npm method time: ${endNpm - startNpm} ms`);
+      console.log(`Npm method time: ${String(endNpm - startNpm)} ms`);
 
       // wasm methods
       const startWasm = performance.now();
       const hexWasm = wasmBuffer.toString("hex");
       const endWasm = performance.now();
-      console.log(`Wasm method time: ${endWasm - startWasm} ms`);
+      console.log(`Wasm method time: ${String(endWasm - startWasm)} ms`);
 
       // Make sure they are all equal
       expect(hexNpm).toBe(hexWasm);
@@ -230,13 +230,13 @@ describe("WebBuf Benchmarks", () => {
       const startNpm = performance.now();
       const decodedNpm = NpmBuffer.from(hex, "hex");
       const endNpm = performance.now();
-      console.log(`Npm method time: ${endNpm - startNpm} ms`);
+      console.log(`Npm method time: ${String(endNpm - startNpm)} ms`);
 
       // wasm methods
       const startWasm = performance.now();
       const decodedWasm = WebBuf.from(hex, "hex");
       const endWasm = performance.now();
-      console.log(`Wasm method time: ${endWasm - startWasm} ms`);
+      console.log(`Wasm method time: ${String(endWasm - startWasm)} ms`);
 
       // Make sure they are all equal
       expect(NpmBuffer.from(decodedWasm).toString("hex")).toBe(

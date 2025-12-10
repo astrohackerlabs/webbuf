@@ -138,9 +138,6 @@ export class WebBuf extends Uint8Array {
     if (encoding === "base64") {
       return WebBuf.fromBase64(str);
     }
-    if (encoding === "utf8") {
-      return WebBuf.fromUtf8(str);
-    }
     return WebBuf.fromUtf8(str);
   }
 
@@ -270,8 +267,7 @@ export class WebBuf extends Uint8Array {
   static from(
     source: ArrayLike<number> | Iterable<number> | string,
     mapFn?: ((v: number, k: number) => number) | string,
-    // biome-ignore lint:
-    thisArg?: any,
+    thisArg?: unknown,
   ): WebBuf {
     if (typeof mapFn === "string") {
       if (typeof source !== "string") {
@@ -335,8 +331,12 @@ export class WebBuf extends Uint8Array {
     const len = Math.min(this.length, other.length);
 
     for (let i = 0; i < len; i++) {
-      if (this[i] !== other[i]) {
-        return (this[i]!) < (other[i]!) ? -1 : 1;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const a = this[i]!;
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const b = other[i]!;
+      if (a !== b) {
+        return a < b ? -1 : 1;
       }
     }
 

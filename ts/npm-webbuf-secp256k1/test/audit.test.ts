@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * Audit tests for @webbuf/secp256k1
  *
@@ -160,7 +161,7 @@ describe("Audit: Cross-implementation verification with @noble/secp256k1", () =>
   });
 
   describe("signature verification", () => {
-    it("should verify signatures that noble can verify", async () => {
+    it("should verify signatures that noble can verify", () => {
       for (let i = 0; i < 5; i++) {
         let privKey = FixedBuf.fromRandom(32);
         while (!privateKeyVerify(privKey)) {
@@ -168,7 +169,7 @@ describe("Audit: Cross-implementation verification with @noble/secp256k1", () =>
         }
 
         const pubKey = publicKeyCreate(privKey);
-        const message = WebBuf.fromUtf8(`test message ${i}`);
+        const message = WebBuf.fromUtf8(`test message ${String(i)}`);
         const digest = blake3Hash(message);
 
         // Sign with webbuf
@@ -256,7 +257,7 @@ describe("Audit: Signature correctness", () => {
     // Create tampered signature by copying and modifying
     const tamperedBytes = WebBuf.alloc(64);
     tamperedBytes.set(signature.buf);
-    tamperedBytes[0] ^= 0x01;
+    tamperedBytes[0]! ^= 0x01;
     const tamperedSig = FixedBuf.fromBuf(64, tamperedBytes);
 
     expect(verify(tamperedSig, digest, pubKey)).toBe(false);
@@ -467,8 +468,8 @@ describe("Audit: ECDH (Diffie-Hellman)", () => {
     const alice2Priv = FixedBuf.fromRandom(32);
     const bobPriv = FixedBuf.fromRandom(32);
 
-    const alice1Pub = publicKeyCreate(alice1Priv);
-    const alice2Pub = publicKeyCreate(alice2Priv);
+    publicKeyCreate(alice1Priv);
+    publicKeyCreate(alice2Priv);
     const bobPub = publicKeyCreate(bobPriv);
 
     const shared1 = sharedSecret(alice1Priv, bobPub);

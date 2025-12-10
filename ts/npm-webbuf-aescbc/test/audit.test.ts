@@ -475,11 +475,11 @@ describe("Audit: Round-trip tests", () => {
   });
 
   it("should round-trip with all key sizes", () => {
-    const keySizes: Array<16 | 24 | 32> = [16, 24, 32];
+    const keySizes: (16 | 24 | 32)[] = [16, 24, 32];
     const plaintext = WebBuf.fromUtf8("Test all key sizes");
 
     for (const keySize of keySizes) {
-      const key = FixedBuf.fromRandom(keySize);
+      const key = FixedBuf.fromRandom(keySize) as FixedBuf<16> | FixedBuf<24> | FixedBuf<32>;
       const encrypted = aescbcEncrypt(plaintext, key);
       const decrypted = aescbcDecrypt(encrypted, key);
       expect(decrypted.toUtf8()).toBe("Test all key sizes");

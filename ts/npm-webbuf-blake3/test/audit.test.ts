@@ -32,7 +32,7 @@ const OFFICIAL_TEST_KEY = WebBuf.fromUtf8("whats the Elvish word for friend");
 
 describe("Audit: Official BLAKE3 test vectors - hash mode", () => {
   // Official test vectors from BLAKE3 repository
-  const hashTestVectors: Array<{ inputLen: number; expectedHash: string }> = [
+  const hashTestVectors: { inputLen: number; expectedHash: string }[] = [
     {
       inputLen: 0,
       expectedHash:
@@ -126,7 +126,7 @@ describe("Audit: Official BLAKE3 test vectors - hash mode", () => {
   ];
 
   for (const { inputLen, expectedHash } of hashTestVectors) {
-    it(`should match official test vector for ${inputLen} byte input`, () => {
+    it(`should match official test vector for ${String(inputLen)} byte input`, () => {
       const input = generateTestInput(inputLen);
       const result = blake3Hash(input);
       expect(result.toHex()).toBe(expectedHash);
@@ -136,10 +136,10 @@ describe("Audit: Official BLAKE3 test vectors - hash mode", () => {
 
 describe("Audit: Official BLAKE3 test vectors - keyed_hash mode (MAC)", () => {
   // Official test vectors for keyed_hash mode
-  const keyedHashTestVectors: Array<{
+  const keyedHashTestVectors: {
     inputLen: number;
     expectedHash: string;
-  }> = [
+  }[] = [
     {
       inputLen: 0,
       expectedHash:
@@ -236,7 +236,7 @@ describe("Audit: Official BLAKE3 test vectors - keyed_hash mode (MAC)", () => {
   const testKey = FixedBuf.fromBuf(32, OFFICIAL_TEST_KEY);
 
   for (const { inputLen, expectedHash } of keyedHashTestVectors) {
-    it(`should match official keyed_hash test vector for ${inputLen} byte input`, () => {
+    it(`should match official keyed_hash test vector for ${String(inputLen)} byte input`, () => {
       const input = generateTestInput(inputLen);
       const result = blake3Mac(testKey, input);
       expect(result.toHex()).toBe(expectedHash);

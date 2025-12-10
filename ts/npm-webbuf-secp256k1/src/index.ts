@@ -29,7 +29,7 @@ export function verify(
 ): boolean {
   try {
     raw_verify(signature.buf, digest.buf, publicKey.buf);
-  } catch (e) {
+  } catch {
     return false;
   }
   return true;

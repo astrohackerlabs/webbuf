@@ -10,7 +10,6 @@
 import { describe, it, expect } from "vitest";
 import { sha256Hash, doubleSha256Hash, sha256Hmac } from "../src/index.js";
 import { WebBuf } from "@webbuf/webbuf";
-import { FixedBuf } from "@webbuf/fixedbuf";
 
 // Helper to compute SHA-256 using Web Crypto API
 async function webCryptoSha256(data: Uint8Array): Promise<Uint8Array> {
@@ -264,7 +263,7 @@ describe("Audit: SHA-256 block boundary tests", () => {
 describe("Audit: HMAC-SHA256 key handling", () => {
   // HMAC uses 64-byte block size for SHA-256
 
-  it("should handle empty key", async () => {
+  it("should handle empty key", () => {
     // Note: Web Crypto doesn't support empty keys, so we just verify
     // our implementation produces a 32-byte output and is deterministic
     const key = WebBuf.alloc(0);

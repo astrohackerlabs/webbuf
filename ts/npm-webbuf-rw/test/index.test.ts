@@ -1,4 +1,4 @@
-import { expect, describe, test, it } from "vitest";
+import { expect, describe, it } from "vitest";
 import { BufReader, BufWriter } from "../src/index.js";
 
 describe("BufReader", () => {

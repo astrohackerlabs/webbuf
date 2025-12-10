@@ -28,7 +28,7 @@ export class BufReader {
 
   readFixed<N extends number>(len: N): FixedBuf<N> {
     const isoBuf = this.read(len);
-    return FixedBuf.fromBuf(len, isoBuf) as FixedBuf<N>;
+    return FixedBuf.fromBuf(len, isoBuf);
   }
 
   readRemainder(): WebBuf {
@@ -41,7 +41,7 @@ export class BufReader {
       val = U8.fromBEBuf(
         FixedBuf.fromBuf(1, this.buf.subarray(this.pos, this.pos + 1)),
       );
-    } catch (err: unknown) {
+    } catch {
       throw new Error("not enough bytes in the buffer to read");
     }
     this.pos += 1;
@@ -54,7 +54,7 @@ export class BufReader {
       val = U16BE.fromBEBuf(
         FixedBuf.fromBuf(2, this.buf.subarray(this.pos, this.pos + 2)),
       );
-    } catch (err: unknown) {
+    } catch {
       throw new Error("not enough bytes in the buffer to read");
     }
     this.pos += 2;
@@ -67,7 +67,7 @@ export class BufReader {
       val = U32BE.fromBEBuf(
         FixedBuf.fromBuf(4, this.buf.subarray(this.pos, this.pos + 4)),
       );
-    } catch (err: unknown) {
+    } catch {
       throw new Error("not enough bytes in the buffer to read");
     }
     this.pos += 4;
@@ -80,7 +80,7 @@ export class BufReader {
       val = U64BE.fromBEBuf(
         FixedBuf.fromBuf(8, this.buf.subarray(this.pos, this.pos + 8)),
       );
-    } catch (err: unknown) {
+    } catch {
       throw new Error("not enough bytes in the buffer to read");
     }
     this.pos += 8;
@@ -93,7 +93,7 @@ export class BufReader {
       val = U128BE.fromBEBuf(
         FixedBuf.fromBuf(16, this.buf.subarray(this.pos, this.pos + 16)),
       );
-    } catch (err: unknown) {
+    } catch {
       throw new Error("not enough bytes in the buffer to read");
     }
     this.pos += 16;
@@ -106,7 +106,7 @@ export class BufReader {
       val = U256BE.fromBEBuf(
         FixedBuf.fromBuf(32, this.buf.subarray(this.pos, this.pos + 32)),
       );
-    } catch (err: unknown) {
+    } catch {
       throw new Error("not enough bytes in the buffer to read");
     }
     this.pos += 32;

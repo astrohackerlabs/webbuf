@@ -9,7 +9,6 @@
 import { describe, it, expect } from "vitest";
 import { ripemd160Hash, doubleRipemd160Hash } from "../src/index.js";
 import { WebBuf } from "@webbuf/webbuf";
-import { FixedBuf } from "@webbuf/fixedbuf";
 import ripemd160Js from "ripemd160-js/ripemd160.js";
 
 // Helper to compute RIPEMD-160 using ripemd160-js library for comparison

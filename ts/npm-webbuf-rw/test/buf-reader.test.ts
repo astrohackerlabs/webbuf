@@ -3,7 +3,7 @@ import { BufReader } from "../src/buf-reader.js";
 import { WebBuf } from "@webbuf/webbuf";
 import fs from "node:fs";
 import path from "node:path";
-import { U16BE, U32BE, U64BE } from "@webbuf/numbers";
+import { U16BE, U32BE } from "@webbuf/numbers";
 
 describe("BufReader", () => {
   let bufferReader: BufReader;
@@ -193,7 +193,7 @@ describe("BufReader", () => {
 
     const filePath = path.resolve(__dirname, "../vectors/buf-reader.json");
     const jsonString = fs.readFileSync(filePath, "utf-8");
-    const testVector: TestVectorEbxBufReader = JSON.parse(jsonString);
+    const testVector = JSON.parse(jsonString) as TestVectorEbxBufReader;
 
     test("test vectors: read", () => {
       for (const test of testVector.read.errors) {

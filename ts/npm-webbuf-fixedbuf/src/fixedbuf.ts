@@ -38,7 +38,7 @@ export class FixedBuf<N extends number> {
     try {
       const buf = WebBuf.from(base64, "base64");
       return FixedBuf.fromBuf(size, buf);
-    } catch (err) {
+    } catch {
       throw new Error("invalid encoding");
     }
   }

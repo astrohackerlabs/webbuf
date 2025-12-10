@@ -74,8 +74,7 @@ const wasmImportRegex = /import .* from ['"].*\.wasm['"];?/g;
 const matches = originalCode.match(wasmImportRegex);
 
 // If there are any other .wasm imports, throw an error
-// biome-ignore lint:
-if (matches && matches.some((line) => line !== expectedImport)) {
+if (matches?.some((line) => line !== expectedImport)) {
   throw new Error(
     `Unexpected .wasm import detected:\n${matches.filter((line) => line !== expectedImport).join("\n")}`,
   );

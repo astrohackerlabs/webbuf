@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { describe, it, expect } from "vitest";
 import { acs2Encrypt, acs2Decrypt } from "../src/index.js";
 import { WebBuf } from "@webbuf/webbuf";
@@ -67,7 +68,7 @@ describe("Encryption Tests", () => {
     const key = sha256Hash(WebBuf.from("testkey"));
     const encrypted = acs2Encrypt(plaintext, key);
     // Tamper with the ciphertext (after the HMAC)
-    encrypted[40] = encrypted[40] ^ 0xff;
+    encrypted[40] = encrypted[40]! ^ 0xff;
     expect(() => acs2Decrypt(encrypted, key)).toThrow(
       "Message authentication failed",
     );

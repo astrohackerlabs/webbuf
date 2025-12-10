@@ -55,7 +55,7 @@ describe("Encryption Tests", () => {
       const alicePubKey = publicKeyCreate(alicePrivKey);
       const bobPrivKey = FixedBuf.fromRandom(32);
       const bobPubKey = publicKeyCreate(bobPrivKey);
-      const plaintext = WebBuf.fromString(`message ${i}`);
+      const plaintext = WebBuf.fromString(`message ${String(i)}`);
       const encrypted = acs2dhEncrypt(alicePrivKey, bobPubKey, plaintext);
       const decrypted = acs2dhDecrypt(bobPrivKey, alicePubKey, encrypted);
       expect(decrypted.toString()).toBe(plaintext.toString());

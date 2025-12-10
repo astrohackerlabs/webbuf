@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * Audit tests for @webbuf/acs2dh
  *
@@ -336,7 +337,7 @@ describe("Audit: Tamper detection", () => {
     // Tamper with HMAC
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[0] ^= 0x01;
+    tampered[0]! ^= 0x01;
 
     expect(() => acs2dhDecrypt(bob.privKey, alice.pubKey, tampered)).toThrow();
   });
@@ -351,7 +352,7 @@ describe("Audit: Tamper detection", () => {
     // Tamper with IV (byte 32)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[32] ^= 0x01;
+    tampered[32]! ^= 0x01;
 
     expect(() => acs2dhDecrypt(bob.privKey, alice.pubKey, tampered)).toThrow();
   });
@@ -366,7 +367,7 @@ describe("Audit: Tamper detection", () => {
     // Tamper with ciphertext (byte 48)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[48] ^= 0x01;
+    tampered[48]! ^= 0x01;
 
     expect(() => acs2dhDecrypt(bob.privKey, alice.pubKey, tampered)).toThrow();
   });
@@ -395,9 +396,9 @@ describe("Audit: Known test vectors", () => {
 
     expect(decrypted.toUtf8()).toBe("test");
 
-    // Verify the derived key matches expected
+    // Verify the derived key is deterministic
     const ecdhSecret = sharedSecret(alicePrivKey, bobPubKey);
-    const derivedKey = sha256Hash(ecdhSecret.buf);
+    sha256Hash(ecdhSecret.buf);
 
     // The key should be deterministic for these inputs
     const encrypted2 = acs2dhEncrypt(alicePrivKey, bobPubKey, plaintext, iv);
@@ -436,7 +437,7 @@ describe("Audit: Edge cases", () => {
 
     // Decrypt all messages
     for (let i = 0; i < messages.length; i++) {
-      const decrypted = acs2dhDecrypt(bob.privKey, alice.pubKey, encryptedMessages[i]);
+      const decrypted = acs2dhDecrypt(bob.privKey, alice.pubKey, encryptedMessages[i]!);
       expect(decrypted.toUtf8()).toBe(messages[i]);
     }
   });

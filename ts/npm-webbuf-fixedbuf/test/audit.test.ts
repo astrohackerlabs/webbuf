@@ -98,7 +98,7 @@ describe("Audit: Size Enforcement", () => {
     ];
 
     for (const { name, size } of sizes) {
-      it(`should correctly enforce ${name} size (${size} bytes)`, () => {
+      it(`should correctly enforce ${name} size (${String(size)} bytes)`, () => {
         // Exact size should work
         const exact = WebBuf.alloc(size);
         const fixed = FixedBuf.fromBuf(size, exact);
@@ -123,7 +123,7 @@ describe("Audit: fromRandom", () => {
     const sizes = [0, 1, 8, 16, 20, 24, 32, 33, 64, 65, 128, 256];
 
     for (const size of sizes) {
-      it(`should produce exactly ${size} bytes`, () => {
+      it(`should produce exactly ${String(size)} bytes`, () => {
         const fixed = FixedBuf.fromRandom(size);
         expect(fixed.buf.length).toBe(size);
         expect(fixed._size).toBe(size);
@@ -147,8 +147,8 @@ describe("Audit: fromRandom", () => {
       // Generate a large random buffer and check it's not all zeros
       const fixed = FixedBuf.fromRandom(1024);
       let hasNonZero = false;
-      for (let i = 0; i < fixed.buf.length; i++) {
-        if (fixed.buf[i] !== 0) {
+      for (const byte of fixed.buf) {
+        if (byte !== 0) {
           hasNonZero = true;
           break;
         }
@@ -159,10 +159,10 @@ describe("Audit: fromRandom", () => {
     it("should use crypto.getRandomValues (statistical distribution check)", () => {
       // Generate many random bytes and check rough distribution
       const fixed = FixedBuf.fromRandom(10000);
-      const counts = new Array(256).fill(0);
+      const counts = new Array(256).fill(0) as number[];
 
-      for (let i = 0; i < fixed.buf.length; i++) {
-        counts[fixed.buf[i] as number]++;
+      for (const byte of fixed.buf) {
+        counts[byte] = (counts[byte] ?? 0) + 1;
       }
 
       // Each byte value should appear roughly 10000/256 ≈ 39 times

@@ -7,7 +7,6 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { WebBuf } from "@webbuf/webbuf";
 import {
   U8,
   U16BE,
@@ -550,7 +549,7 @@ describe("Audit: U256 endianness verification", () => {
         { power: 255, expected: 2n ** 255n },
       ];
 
-      for (const { power, expected } of testCases) {
+      for (const { expected } of testCases) {
         const u256 = U256BE.fromBn(expected);
         expect(u256.bn).toBe(expected);
       }

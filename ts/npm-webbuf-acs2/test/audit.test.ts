@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * Audit tests for @webbuf/acs2
  *
@@ -236,7 +237,7 @@ describe("Audit: HMAC tampering detection", () => {
     // Tamper with first byte of HMAC
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[0] ^= 0x01;
+    tampered[0]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -250,7 +251,7 @@ describe("Audit: HMAC tampering detection", () => {
     // Tamper with last byte of HMAC (byte 31)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[31] ^= 0x01;
+    tampered[31]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -264,7 +265,7 @@ describe("Audit: HMAC tampering detection", () => {
     // Tamper with middle byte of HMAC (byte 16)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[16] ^= 0x01;
+    tampered[16]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -296,7 +297,7 @@ describe("Audit: IV tampering detection", () => {
     // Tamper with first byte of IV (byte 32)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[32] ^= 0x01;
+    tampered[32]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -310,7 +311,7 @@ describe("Audit: IV tampering detection", () => {
     // Tamper with last byte of IV (byte 47)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[47] ^= 0x01;
+    tampered[47]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -326,7 +327,7 @@ describe("Audit: Ciphertext tampering detection", () => {
     // Tamper with first byte of ciphertext (byte 48)
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[48] ^= 0x01;
+    tampered[48]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -340,7 +341,7 @@ describe("Audit: Ciphertext tampering detection", () => {
     // Tamper with last byte of ciphertext
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[encrypted.length - 1] ^= 0x01;
+    tampered[encrypted.length - 1]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -355,7 +356,7 @@ describe("Audit: Ciphertext tampering detection", () => {
     const middleIndex = 48 + Math.floor((encrypted.length - 48) / 2);
     const tampered = WebBuf.alloc(encrypted.length);
     tampered.set(encrypted);
-    tampered[middleIndex] ^= 0x01;
+    tampered[middleIndex]! ^= 0x01;
 
     expect(() => acs2Decrypt(tampered, key)).toThrow("Message authentication failed");
   });
@@ -423,7 +424,7 @@ describe("Audit: Key sensitivity", () => {
     const key1 = FixedBuf.fromRandom(32);
     const key2Bytes = WebBuf.alloc(32);
     key2Bytes.set(key1.buf);
-    key2Bytes[0] ^= 0x01;
+    key2Bytes[0]! ^= 0x01;
     const key2 = FixedBuf.fromBuf(32, key2Bytes);
 
     const plaintext = WebBuf.fromUtf8("secret message");
