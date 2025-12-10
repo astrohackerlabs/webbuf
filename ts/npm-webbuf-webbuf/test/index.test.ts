@@ -44,8 +44,8 @@ describe("wipe", () => {
     expect(buf[0]).toBe(0xff);
     expect(buf[1023]).toBe(0xff);
     buf.wipe();
-    for (let i = 0; i < buf.length; i++) {
-      expect(buf[i]).toBe(0);
+    for (const byte of buf) {
+      expect(byte).toBe(0);
     }
   });
 });

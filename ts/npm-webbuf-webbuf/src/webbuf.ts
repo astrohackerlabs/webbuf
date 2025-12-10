@@ -336,7 +336,7 @@ export class WebBuf extends Uint8Array {
 
     for (let i = 0; i < len; i++) {
       if (this[i] !== other[i]) {
-        return (this[i] as number) < (other[i] as number) ? -1 : 1;
+        return (this[i]!) < (other[i]!) ? -1 : 1;
       }
     }
 
