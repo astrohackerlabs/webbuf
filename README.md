@@ -21,7 +21,7 @@ npm install @webbuf/webbuf @webbuf/fixedbuf @webbuf/sha256 # etc.
 
 | Package             | Description                                                        |
 | ------------------- | ------------------------------------------------------------------ |
-| `@webbuf/webbuf`    | Core `WebBuf` class - extended Uint8Array with hex/base64 encoding |
+| `@webbuf/webbuf`    | Core `WebBuf` class - extended Uint8Array with hex/base64/base32 encoding |
 | `@webbuf/fixedbuf`  | `FixedBuf<N>` - compile-time sized buffer wrapper                  |
 | `@webbuf/numbers`   | Fixed-size integers (U8, U16BE, U32LE, U64BE, U128, U256, etc.)    |
 | `@webbuf/rw`        | `BufReader` and `BufWriter` for sequential binary I/O              |
@@ -41,9 +41,9 @@ npm install @webbuf/webbuf @webbuf/fixedbuf @webbuf/sha256 # etc.
 
 ### WebBuf
 
-`WebBuf` extends `Uint8Array` with convenient methods for hex/base64 encoding,
-concatenation, comparison, and cloning. The encoding methods use Rust/WASM for
-performance.
+`WebBuf` extends `Uint8Array` with convenient methods for hex/base64/base32
+encoding, concatenation, comparison, and cloning. The encoding methods use
+Rust/WASM for performance.
 
 ```typescript
 import { WebBuf } from "@webbuf/webbuf";
@@ -55,11 +55,13 @@ const buf3 = WebBuf.fromHex("deadbeef");          // From hex string
 const buf4 = WebBuf.fromBase64("SGVsbG8=");       // From base64
 const buf5 = WebBuf.fromUtf8("Hello");            // From UTF-8 string
 const buf6 = WebBuf.fromArray([1, 2, 3, 4]);      // From number array
+const buf7 = WebBuf.fromBase32("91JPRV3F");       // From base32 (Crockford default)
 
 // Converting to strings
 buf3.toHex();     // "deadbeef"
 buf4.toBase64();  // "SGVsbG8="
 buf5.toUtf8();    // "Hello"
+buf7.toBase32();  // "91JPRV3F" (Crockford default)
 
 // Buffer operations
 const combined = WebBuf.concat([buf1, buf2, buf3]);
@@ -80,6 +82,7 @@ buf1.compare(buf2);  // -1, 0, or 1
 | `WebBuf.concat(buffers[])`   | Concatenate multiple buffers  |
 | `WebBuf.fromHex(hex)`        | Parse hex string to buffer    |
 | `WebBuf.fromBase64(b64)`     | Parse base64 string to buffer |
+| `WebBuf.fromBase32(str, opts?)` | Parse base32 string to buffer |
 | `WebBuf.fromUtf8(str)`       | Encode UTF-8 string to buffer |
 | `WebBuf.fromArray(nums[])`   | Create from number array      |
 | `WebBuf.fromUint8Array(arr)` | Create from Uint8Array        |
@@ -88,6 +91,7 @@ buf1.compare(buf2);  // -1, 0, or 1
 | ------------------------ | ----------------------------- |
 | `toHex()`                | Convert to hex string         |
 | `toBase64()`             | Convert to base64 string      |
+| `toBase32(opts?)`        | Convert to base32 string      |
 | `toUtf8()`               | Decode as UTF-8 string        |
 | `clone()`                | Create a copy                 |
 | `toReverse()`            | Create reversed copy          |
@@ -139,6 +143,7 @@ const reversed = key.toReverse();
 | `FixedBuf.fromBuf<N>(size, webBuf)` | Wrap WebBuf (throws if wrong size)  |
 | `FixedBuf.fromHex<N>(size, hex)`    | Parse hex (throws if wrong size)    |
 | `FixedBuf.fromBase64(size, b64)`    | Parse base64 (throws if wrong size) |
+| `FixedBuf.fromBase32(size, str, opts?)` | Parse base32 (throws if wrong size) |
 | `FixedBuf.fromRandom<N>(size)`      | Generate N random bytes             |
 
 | Instance Properties/Methods | Description              |
@@ -146,6 +151,7 @@ const reversed = key.toReverse();
 | `buf`                       | Get underlying WebBuf    |
 | `toHex()`                   | Convert to hex string    |
 | `toBase64()`                | Convert to base64 string |
+| `toBase32(opts?)`           | Convert to base32 string |
 | `clone()`                   | Create a copy            |
 | `toReverse()`               | Create reversed copy     |
 
@@ -153,7 +159,7 @@ const reversed = key.toReverse();
 
 | Size           | Common Use                                           |
 | -------------- | ---------------------------------------------------- |
-| `FixedBuf<16>` | AES IV, AES-128 key                                  |
+| `FixedBuf<16>` | AES IV, AES-128 key, UUIDs                           |
 | `FixedBuf<20>` | RIPEMD-160 hash                                      |
 | `FixedBuf<32>` | SHA-256 hash, BLAKE3 hash, private keys, AES-256 key |
 | `FixedBuf<33>` | Compressed public key (secp256k1)                    |
@@ -433,6 +439,36 @@ buf.toHex();  // "deadbeef0102030405"
 // FixedBuf: fixed-length hex (must match size exactly)
 const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 hash.toHex();  // Same 64-char hex string
+```
+
+### Working with Base32
+
+Base32 encoding is useful for human-readable identifiers like UUIDs. It's more
+compact than hex (26 chars vs 32 for a UUID) and avoids ambiguous characters.
+
+```typescript
+// Base32 encoding (Crockford default - case-insensitive, URL-safe)
+const uuid = FixedBuf.fromRandom<16>(16);
+uuid.toBase32();  // "5WJPRV3FKZB1M8Q4C6A0ERSN7Y" (26 chars)
+uuid.toHex();     // "2d93a6b1f5..." (32 chars)
+
+// Parsing is case-insensitive for Crockford (I/L → 1, O → 0)
+WebBuf.fromBase32("5wjprv3f");  // Same as "5WJPRV3F"
+WebBuf.fromBase32("O1IL");      // Parsed as "0111"
+
+// Different alphabets
+buf.toBase32({ alphabet: "Rfc4648" });                  // Standard RFC 4648 (with padding)
+buf.toBase32({ alphabet: "Rfc4648", padding: false });  // Without padding
+buf.toBase32({ alphabet: "Rfc4648Lower" });             // Lowercase RFC 4648
+buf.toBase32({ alphabet: "Z" });                        // z-base-32
+
+// Supported alphabets:
+// - "Crockford" (default): 0-9 A-Z excluding I L O U, case-insensitive
+// - "Rfc4648": A-Z 2-7 with padding
+// - "Rfc4648Lower": a-z 2-7 with padding
+// - "Rfc4648Hex": 0-9 A-V with padding
+// - "Rfc4648HexLower": 0-9 a-v with padding
+// - "Z": z-base-32 (optimized for human readability)
 ```
 
 ### Generating Random Data
