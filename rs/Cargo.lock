@@ -792,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "base32",
  "base64",
@@ -802,7 +802,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_aescbc"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "aes",
  "serde",
@@ -822,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_blake3"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "blake3",
  "hex",
@@ -831,7 +831,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_ripemd160"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "hex",
  "ripemd",
@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_secp256k1"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "env_logger",
  "hex",
@@ -856,7 +856,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_sha256"
-version = "0.14.0"
+version = "0.15.0"
 dependencies = [
  "hex",
  "hmac",
