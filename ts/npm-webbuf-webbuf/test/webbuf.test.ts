@@ -221,4 +221,165 @@ describe("WebBuf", () => {
       expect(() => WebBuf.fromBase64(base64)).toThrow();
     });
   });
+
+  describe("base32", () => {
+    describe("Crockford", () => {
+      it("should encode to Crockford base32", () => {
+        const buf = WebBuf.fromUtf8("Hello, world!");
+        const encoded = buf.toBase32();
+        expect(encoded).toBe("91JPRV3F5GG7EVVJDHJ22");
+      });
+
+      it("should decode from Crockford base32", () => {
+        const decoded = WebBuf.fromBase32("91JPRV3F5GG7EVVJDHJ22");
+        expect(decoded.toUtf8()).toBe("Hello, world!");
+      });
+
+      it("should be case insensitive on decode", () => {
+        const decoded = WebBuf.fromBase32("91jprv3f5gg7evvjdhj22");
+        expect(decoded.toUtf8()).toBe("Hello, world!");
+      });
+
+      it("should handle I/L/O normalization", () => {
+        const result1 = WebBuf.fromBase32("IiLlOo");
+        const result2 = WebBuf.fromBase32("111100");
+        expect(result1.toHex()).toBe(result2.toHex());
+      });
+
+      it("should roundtrip arbitrary data", () => {
+        const original = WebBuf.fromHex(
+          "000102030405060708090a0b0c0d0e0ff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+        );
+        const encoded = original.toBase32();
+        const decoded = WebBuf.fromBase32(encoded);
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+
+    describe("Rfc4648", () => {
+      it("should encode to RFC4648 base32 with padding", () => {
+        const buf = WebBuf.fromUtf8("Hello, world!");
+        const encoded = buf.toBase32({ alphabet: "Rfc4648" });
+        expect(encoded).toBe("JBSWY3DPFQQHO33SNRSCC===");
+      });
+
+      it("should encode to RFC4648 base32 without padding", () => {
+        const buf = WebBuf.fromUtf8("Hello, world!");
+        const encoded = buf.toBase32({ alphabet: "Rfc4648", padding: false });
+        expect(encoded).toBe("JBSWY3DPFQQHO33SNRSCC");
+      });
+
+      it("should decode from RFC4648 base32 with padding", () => {
+        const decoded = WebBuf.fromBase32("JBSWY3DPFQQHO33SNRSCC===", {
+          alphabet: "Rfc4648",
+        });
+        expect(decoded.toUtf8()).toBe("Hello, world!");
+      });
+
+      it("should decode from RFC4648 base32 without padding", () => {
+        const decoded = WebBuf.fromBase32("JBSWY3DPFQQHO33SNRSCC", {
+          alphabet: "Rfc4648",
+          padding: false,
+        });
+        expect(decoded.toUtf8()).toBe("Hello, world!");
+      });
+
+      it("should roundtrip with padding", () => {
+        const original = WebBuf.fromHex("deadbeef");
+        const encoded = original.toBase32({ alphabet: "Rfc4648" });
+        const decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648" });
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+
+    describe("Rfc4648Lower", () => {
+      it("should encode to lowercase RFC4648 base32", () => {
+        const buf = WebBuf.fromUtf8("Hello, world!");
+        const encoded = buf.toBase32({ alphabet: "Rfc4648Lower" });
+        expect(encoded).toBe("jbswy3dpfqqho33snrscc===");
+      });
+
+      it("should roundtrip", () => {
+        const original = WebBuf.fromHex("deadbeef");
+        const encoded = original.toBase32({ alphabet: "Rfc4648Lower" });
+        const decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648Lower" });
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+
+    describe("Rfc4648Hex", () => {
+      it("should roundtrip", () => {
+        const original = WebBuf.fromHex("deadbeef");
+        const encoded = original.toBase32({ alphabet: "Rfc4648Hex" });
+        const decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648Hex" });
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+
+    describe("Rfc4648HexLower", () => {
+      it("should roundtrip", () => {
+        const original = WebBuf.fromHex("deadbeef");
+        const encoded = original.toBase32({ alphabet: "Rfc4648HexLower" });
+        const decoded = WebBuf.fromBase32(encoded, {
+          alphabet: "Rfc4648HexLower",
+        });
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+
+    describe("Z", () => {
+      it("should roundtrip", () => {
+        const original = WebBuf.fromHex("deadbeef");
+        const encoded = original.toBase32({ alphabet: "Z" });
+        const decoded = WebBuf.fromBase32(encoded, { alphabet: "Z" });
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+
+    describe("all alphabets roundtrip", () => {
+      it("should roundtrip arbitrary data with all alphabets", () => {
+        const original = WebBuf.fromHex(
+          "000102030405060708090a0b0c0d0e0ff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+        );
+
+        // Crockford (default)
+        let encoded = original.toBase32();
+        let decoded = WebBuf.fromBase32(encoded);
+        expect(decoded.toHex()).toBe(original.toHex());
+
+        // Rfc4648 with padding
+        encoded = original.toBase32({ alphabet: "Rfc4648" });
+        decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648" });
+        expect(decoded.toHex()).toBe(original.toHex());
+
+        // Rfc4648 without padding
+        encoded = original.toBase32({ alphabet: "Rfc4648", padding: false });
+        decoded = WebBuf.fromBase32(encoded, {
+          alphabet: "Rfc4648",
+          padding: false,
+        });
+        expect(decoded.toHex()).toBe(original.toHex());
+
+        // Rfc4648Lower
+        encoded = original.toBase32({ alphabet: "Rfc4648Lower" });
+        decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648Lower" });
+        expect(decoded.toHex()).toBe(original.toHex());
+
+        // Rfc4648Hex
+        encoded = original.toBase32({ alphabet: "Rfc4648Hex" });
+        decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648Hex" });
+        expect(decoded.toHex()).toBe(original.toHex());
+
+        // Rfc4648HexLower
+        encoded = original.toBase32({ alphabet: "Rfc4648HexLower" });
+        decoded = WebBuf.fromBase32(encoded, { alphabet: "Rfc4648HexLower" });
+        expect(decoded.toHex()).toBe(original.toHex());
+
+        // Z
+        encoded = original.toBase32({ alphabet: "Z" });
+        decoded = WebBuf.fromBase32(encoded, { alphabet: "Z" });
+        expect(decoded.toHex()).toBe(original.toHex());
+      });
+    });
+  });
 });

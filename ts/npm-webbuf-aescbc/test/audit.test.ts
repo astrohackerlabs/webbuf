@@ -20,15 +20,15 @@ async function webCryptoEncrypt(
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as Uint8Array<ArrayBuffer>,
     { name: "AES-CBC" },
     false,
     ["encrypt"],
   );
   const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-CBC", iv },
+    { name: "AES-CBC", iv: iv as Uint8Array<ArrayBuffer> },
     cryptoKey,
-    plaintext,
+    plaintext as Uint8Array<ArrayBuffer>,
   );
   return new Uint8Array(ciphertext);
 }
@@ -41,15 +41,15 @@ async function webCryptoDecrypt(
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as Uint8Array<ArrayBuffer>,
     { name: "AES-CBC" },
     false,
     ["decrypt"],
   );
   const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-CBC", iv },
+    { name: "AES-CBC", iv: iv as Uint8Array<ArrayBuffer> },
     cryptoKey,
-    ciphertext,
+    ciphertext as Uint8Array<ArrayBuffer>,
   );
   return new Uint8Array(plaintext);
 }

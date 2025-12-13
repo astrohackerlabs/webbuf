@@ -4,7 +4,46 @@ import {
   decode_base64_strip_whitespace,
   encode_hex,
   decode_hex,
+  encode_base32_crockford,
+  decode_base32_crockford,
+  encode_base32_rfc4648,
+  decode_base32_rfc4648,
+  encode_base32_rfc4648_lower,
+  decode_base32_rfc4648_lower,
+  encode_base32_rfc4648_hex,
+  decode_base32_rfc4648_hex,
+  encode_base32_rfc4648_hex_lower,
+  decode_base32_rfc4648_hex_lower,
+  encode_base32_z,
+  decode_base32_z,
 } from "./rs-webbuf-inline-base64/webbuf.js";
+
+/**
+ * Base32 alphabet types matching the Rust base32 crate
+ */
+export type Base32Alphabet =
+  | "Crockford"
+  | "Rfc4648"
+  | "Rfc4648Lower"
+  | "Rfc4648Hex"
+  | "Rfc4648HexLower"
+  | "Z";
+
+/**
+ * Options for base32 encoding/decoding
+ */
+export interface Base32Options {
+  /**
+   * The alphabet to use for encoding/decoding.
+   * @default "Crockford"
+   */
+  alphabet?: Base32Alphabet;
+  /**
+   * Whether to use padding (only applies to Rfc4648* alphabets).
+   * @default true
+   */
+  padding?: boolean;
+}
 
 function verifyOffset(offset: number, ext: number, length: number) {
   if (offset % 1 !== 0 || offset < 0) {
@@ -110,7 +149,11 @@ export class WebBuf extends Uint8Array {
    * @returns WebBuf
    */
   static view(buffer: Uint8Array): WebBuf {
-    return new WebBuf(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    return new WebBuf(
+      buffer.buffer as ArrayBuffer,
+      buffer.byteOffset,
+      buffer.byteLength,
+    );
   }
 
   /**
@@ -166,7 +209,7 @@ export class WebBuf extends Uint8Array {
   static fromHexWasm(hex: string): WebBuf {
     const uint8array = decode_hex(hex);
     return new WebBuf(
-      uint8array.buffer,
+      uint8array.buffer as ArrayBuffer,
       uint8array.byteOffset,
       uint8array.byteLength,
     );
@@ -218,7 +261,7 @@ export class WebBuf extends Uint8Array {
       ? decode_base64_strip_whitespace(b64)
       : decode_base64(b64);
     return new WebBuf(
-      uint8array.buffer,
+      uint8array.buffer as ArrayBuffer,
       uint8array.byteOffset,
       uint8array.byteLength,
     );
@@ -254,6 +297,75 @@ export class WebBuf extends Uint8Array {
     //   return this.toBase64PureJs();
     // }
     return this.toBase64Wasm();
+  }
+
+  /**
+   * Encode this buffer as a base32 string.
+   *
+   * @param options - Options for encoding
+   * @param options.alphabet - The alphabet to use (default: "Crockford")
+   * @param options.padding - Whether to use padding for Rfc4648* alphabets (default: true)
+   * @returns The base32 encoded string
+   */
+  toBase32(options?: Base32Options): string {
+    const alphabet = options?.alphabet ?? "Crockford";
+    const padding = options?.padding ?? true;
+
+    switch (alphabet) {
+      case "Crockford":
+        return encode_base32_crockford(this);
+      case "Rfc4648":
+        return encode_base32_rfc4648(this, padding);
+      case "Rfc4648Lower":
+        return encode_base32_rfc4648_lower(this, padding);
+      case "Rfc4648Hex":
+        return encode_base32_rfc4648_hex(this, padding);
+      case "Rfc4648HexLower":
+        return encode_base32_rfc4648_hex_lower(this, padding);
+      case "Z":
+        return encode_base32_z(this);
+    }
+  }
+
+  /**
+   * Create a WebBuf from a base32 encoded string.
+   *
+   * @param str - The base32 encoded string
+   * @param options - Options for decoding
+   * @param options.alphabet - The alphabet to use (default: "Crockford")
+   * @param options.padding - Whether the string uses padding for Rfc4648* alphabets (default: true)
+   * @returns The decoded WebBuf
+   */
+  static fromBase32(str: string, options?: Base32Options): WebBuf {
+    const alphabet = options?.alphabet ?? "Crockford";
+    const padding = options?.padding ?? true;
+
+    let uint8array: Uint8Array;
+    switch (alphabet) {
+      case "Crockford":
+        uint8array = decode_base32_crockford(str);
+        break;
+      case "Rfc4648":
+        uint8array = decode_base32_rfc4648(str, padding);
+        break;
+      case "Rfc4648Lower":
+        uint8array = decode_base32_rfc4648_lower(str, padding);
+        break;
+      case "Rfc4648Hex":
+        uint8array = decode_base32_rfc4648_hex(str, padding);
+        break;
+      case "Rfc4648HexLower":
+        uint8array = decode_base32_rfc4648_hex_lower(str, padding);
+        break;
+      case "Z":
+        uint8array = decode_base32_z(str);
+        break;
+    }
+    return new WebBuf(
+      uint8array.buffer as ArrayBuffer,
+      uint8array.byteOffset,
+      uint8array.byteLength,
+    );
   }
 
   /**

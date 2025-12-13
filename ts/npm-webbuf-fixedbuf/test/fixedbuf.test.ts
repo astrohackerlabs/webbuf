@@ -36,4 +36,45 @@ describe("FixedBuf", () => {
       expect(() => FixedBuf.fromBuf(5, buf)).toThrow();
     });
   });
+
+  describe("to/from base32", () => {
+    it("should convert to and from Crockford base32 (default)", () => {
+      const buf = FixedBuf.fromHex(4, "deadbeef");
+      const encoded = buf.toBase32();
+      const decoded = FixedBuf.fromBase32(4, encoded);
+      expect(decoded.toHex()).toBe("deadbeef");
+    });
+
+    it("should convert to and from RFC4648 base32 with padding", () => {
+      const buf = FixedBuf.fromHex(4, "deadbeef");
+      const encoded = buf.toBase32({ alphabet: "Rfc4648" });
+      const decoded = FixedBuf.fromBase32(4, encoded, { alphabet: "Rfc4648" });
+      expect(decoded.toHex()).toBe("deadbeef");
+    });
+
+    it("should convert to and from RFC4648 base32 without padding", () => {
+      const buf = FixedBuf.fromHex(4, "deadbeef");
+      const encoded = buf.toBase32({ alphabet: "Rfc4648", padding: false });
+      const decoded = FixedBuf.fromBase32(4, encoded, {
+        alphabet: "Rfc4648",
+        padding: false,
+      });
+      expect(decoded.toHex()).toBe("deadbeef");
+    });
+
+    it("should throw on wrong size from base32", () => {
+      const buf = FixedBuf.fromHex(4, "deadbeef");
+      const encoded = buf.toBase32();
+      expect(() => FixedBuf.fromBase32(5, encoded)).toThrow();
+    });
+
+    it("should handle 32-byte buffers (common for hashes)", () => {
+      const hex =
+        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+      const buf = FixedBuf.fromHex(32, hex);
+      const encoded = buf.toBase32();
+      const decoded = FixedBuf.fromBase32(32, encoded);
+      expect(decoded.toHex()).toBe(hex);
+    });
+  });
 });

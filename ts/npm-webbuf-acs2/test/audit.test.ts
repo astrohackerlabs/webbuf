@@ -20,15 +20,22 @@ import { WebBuf } from "@webbuf/webbuf";
 import { FixedBuf } from "@webbuf/fixedbuf";
 
 // Helper to compute HMAC-SHA256 with Web Crypto
-async function webCryptoHmac(key: Uint8Array, data: Uint8Array): Promise<Uint8Array> {
+async function webCryptoHmac(
+  key: Uint8Array,
+  data: Uint8Array,
+): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as Uint8Array<ArrayBuffer>,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
   );
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, data);
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    cryptoKey,
+    data as Uint8Array<ArrayBuffer>,
+  );
   return new Uint8Array(signature);
 }
 
@@ -40,12 +47,17 @@ async function webCryptoHmacVerify(
 ): Promise<boolean> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as Uint8Array<ArrayBuffer>,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["verify"],
   );
-  return crypto.subtle.verify("HMAC", cryptoKey, signature, data);
+  return crypto.subtle.verify(
+    "HMAC",
+    cryptoKey,
+    signature as Uint8Array<ArrayBuffer>,
+    data as Uint8Array<ArrayBuffer>,
+  );
 }
 
 // Helper to encrypt with Web Crypto AES-CBC
@@ -56,12 +68,16 @@ async function webCryptoEncrypt(
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as Uint8Array<ArrayBuffer>,
     { name: "AES-CBC" },
     false,
     ["encrypt"],
   );
-  const ciphertext = await crypto.subtle.encrypt({ name: "AES-CBC", iv }, cryptoKey, plaintext);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-CBC", iv: iv as Uint8Array<ArrayBuffer> },
+    cryptoKey,
+    plaintext as Uint8Array<ArrayBuffer>,
+  );
   return new Uint8Array(ciphertext);
 }
 
@@ -73,12 +89,16 @@ async function webCryptoDecrypt(
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
-    key,
+    key as Uint8Array<ArrayBuffer>,
     { name: "AES-CBC" },
     false,
     ["decrypt"],
   );
-  const plaintext = await crypto.subtle.decrypt({ name: "AES-CBC", iv }, cryptoKey, ciphertext);
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-CBC", iv: iv as Uint8Array<ArrayBuffer> },
+    cryptoKey,
+    ciphertext as Uint8Array<ArrayBuffer>,
+  );
   return new Uint8Array(plaintext);
 }
 
