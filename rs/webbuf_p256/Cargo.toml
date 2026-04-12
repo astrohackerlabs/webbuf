@@ -1,0 +1,28 @@
+[package]
+name = "webbuf_p256"
+description = "Rust WASM elliptic curve P-256 (NIST) for digital signatures and Diffie-Hellman key exchange"
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+p256 = { version = "0.13.2", default-features = false, features = ["arithmetic"] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+rfc6979 = "0.4.0"
+sha2 = "0.10.8"
+hex-literal = "0.4.1"
+log = { version = "0.4" }
+env_logger = "0.11.5"
+hex = "0.4.3"
+webbuf_blake3 = "0.8.5"
+p256 = { version = "0.13.2", default-features = false, features = ["arithmetic", "ecdsa"] }

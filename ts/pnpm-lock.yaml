@@ -32,12 +32,18 @@ importers:
       '@webbuf/acb3dh':
         specifier: workspace:^
         version: link:../npm-webbuf-acb3dh
+      '@webbuf/acb3p256dh':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acb3p256dh
       '@webbuf/acs2':
         specifier: workspace:^
         version: link:../npm-webbuf-acs2
       '@webbuf/acs2dh':
         specifier: workspace:^
         version: link:../npm-webbuf-acs2dh
+      '@webbuf/acs2p256dh':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acs2p256dh
       '@webbuf/aescbc':
         specifier: workspace:^
         version: link:../npm-webbuf-aescbc
@@ -50,6 +56,9 @@ importers:
       '@webbuf/numbers':
         specifier: workspace:^
         version: link:../npm-webbuf-numbers
+      '@webbuf/p256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-p256
       '@webbuf/ripemd160':
         specifier: workspace:^
         version: link:../npm-webbuf-ripemd160
@@ -198,6 +207,58 @@ importers:
         specifier: ^3.0.5
         version: 3.2.4(@types/node@22.19.2)(tsx@4.21.0)
 
+  npm-webbuf-acb3p256dh:
+    dependencies:
+      '@webbuf/acb3':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acb3
+      '@webbuf/aescbc':
+        specifier: workspace:^
+        version: link:../npm-webbuf-aescbc
+      '@webbuf/blake3':
+        specifier: workspace:^
+        version: link:../npm-webbuf-blake3
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
+      '@webbuf/p256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-p256
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.1
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.19.2
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.1
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.21.0
+        version: 8.48.1(eslint@9.39.1)(typescript@5.8.3)
+      vite:
+        specifier: ^6.1.0
+        version: 6.4.1(@types/node@22.19.2)(tsx@4.21.0)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.2)(tsx@4.21.0)
+
   npm-webbuf-acs2:
     dependencies:
       '@webbuf/aescbc':
@@ -258,6 +319,58 @@ importers:
       '@webbuf/secp256k1':
         specifier: workspace:^
         version: link:../npm-webbuf-secp256k1
+      '@webbuf/sha256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-sha256
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.1
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.19.2
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.1
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.21.0
+        version: 8.48.1(eslint@9.39.1)(typescript@5.8.3)
+      vite:
+        specifier: ^6.1.0
+        version: 6.4.1(@types/node@22.19.2)(tsx@4.21.0)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.2)(tsx@4.21.0)
+
+  npm-webbuf-acs2p256dh:
+    dependencies:
+      '@webbuf/acs2':
+        specifier: workspace:^
+        version: link:../npm-webbuf-acs2
+      '@webbuf/aescbc':
+        specifier: workspace:^
+        version: link:../npm-webbuf-aescbc
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
+      '@webbuf/p256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-p256
       '@webbuf/sha256':
         specifier: workspace:^
         version: link:../npm-webbuf-sha256
@@ -449,6 +562,55 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.1.2
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.21.0
+        version: 8.48.1(eslint@9.39.1)(typescript@5.8.3)
+      vite:
+        specifier: ^6.1.0
+        version: 6.4.1(@types/node@22.19.2)(tsx@4.21.0)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.2)(tsx@4.21.0)
+
+  npm-webbuf-p256:
+    dependencies:
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.1
+      '@noble/curves':
+        specifier: ^1.8.0
+        version: 1.9.7
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.19.2
+      '@webbuf/blake3':
+        specifier: workspace:^
+        version: link:../npm-webbuf-blake3
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.1
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.2
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
       typescript:
         specifier: ^5.7.3
         version: 5.8.3
@@ -1057,6 +1219,14 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@noble/curves@1.9.7':
+    resolution: {integrity: sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==}
+    engines: {node: ^14.21.3 || >=16}
+
+  '@noble/hashes@1.8.0':
+    resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@noble/secp256k1@3.0.0':
     resolution: {integrity: sha512-NJBaR352KyIvj3t6sgT/+7xrNyF9Xk9QlLSIqUGVUYlsnDTAUqY8LOmwpcgEx4AMJXRITQ5XEVHD+mMaPfr3mg==}
@@ -2073,6 +2243,12 @@ snapshots:
       '@isaacs/balanced-match': 4.0.1
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@noble/curves@1.9.7':
+    dependencies:
+      '@noble/hashes': 1.8.0
+
+  '@noble/hashes@1.8.0': {}
 
   '@noble/secp256k1@3.0.0': {}
 
