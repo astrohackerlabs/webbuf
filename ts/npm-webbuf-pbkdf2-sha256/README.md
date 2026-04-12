@@ -21,15 +21,15 @@ const salt = WebBuf.fromUtf8("random salt");
 const iterations = 100_000;
 const keyLen = 32;
 
-const derivedKey = pbkdf2Sha256(password, salt, iterations, keyLen);
-console.log(derivedKey.toHex()); // 32-byte derived key
+const derivedKey = pbkdf2Sha256(password, salt, iterations, keyLen);  // FixedBuf<32>
+console.log(derivedKey.toHex());
 ```
 
 ## API
 
 | Function | Description |
 | -------- | ----------- |
-| `pbkdf2Sha256(password: WebBuf, salt: WebBuf, iterations: number, keyLen: number): WebBuf` | Derive key from password |
+| `pbkdf2Sha256<N>(password: WebBuf, salt: WebBuf, iterations: number, keyLen: N): FixedBuf<N>` | Derive key from password |
 
 **Parameters:**
 - `password` - Password bytes (any length)

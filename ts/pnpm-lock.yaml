@@ -727,6 +727,9 @@ importers:
 
   npm-webbuf-pbkdf2-sha256:
     dependencies:
+      '@webbuf/fixedbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-fixedbuf
       '@webbuf/webbuf':
         specifier: workspace:^
         version: link:../npm-webbuf-webbuf

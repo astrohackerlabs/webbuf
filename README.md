@@ -299,7 +299,7 @@ import { pbkdf2Sha256 } from "@webbuf/pbkdf2-sha256";
 
 const password = WebBuf.fromUtf8("my password");
 const salt = WebBuf.fromUtf8("random salt");
-const derivedKey = pbkdf2Sha256(password, salt, 100_000, 32);  // WebBuf (32 bytes)
+const derivedKey = pbkdf2Sha256(password, salt, 100_000, 32);  // FixedBuf<32>
 ```
 
 ---

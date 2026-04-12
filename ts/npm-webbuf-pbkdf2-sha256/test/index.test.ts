@@ -7,7 +7,7 @@ describe("pbkdf2Sha256", () => {
     const password = WebBuf.fromUtf8("password");
     const salt = WebBuf.fromUtf8("salt");
     const result = pbkdf2Sha256(password, salt, 1, 32);
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
   });
 
   it("should be deterministic", () => {

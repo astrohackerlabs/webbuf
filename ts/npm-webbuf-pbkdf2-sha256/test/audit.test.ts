@@ -111,8 +111,8 @@ describe("Audit: Sensitivity to inputs", () => {
     const salt = WebBuf.fromUtf8("salt");
     const result16 = pbkdf2Sha256(password, salt, 1, 16);
     const result32 = pbkdf2Sha256(password, salt, 1, 32);
-    expect(result16.length).toBe(16);
-    expect(result32.length).toBe(32);
+    expect(result16.buf.length).toBe(16);
+    expect(result32.buf.length).toBe(32);
     // The 16-byte result should be a prefix of the 32-byte result
     // (PBKDF2 property: shorter keys are prefixes of longer keys within the same block)
     expect(result32.toHex().startsWith(result16.toHex())).toBe(true);
@@ -126,7 +126,7 @@ describe("Audit: Output length", () => {
 
     for (const keyLen of [1, 16, 20, 32, 48, 64, 128]) {
       const result = pbkdf2Sha256(password, salt, 1, keyLen);
-      expect(result.length).toBe(keyLen);
+      expect(result.buf.length).toBe(keyLen);
     }
   });
 });
@@ -134,12 +134,12 @@ describe("Audit: Output length", () => {
 describe("Audit: Edge cases", () => {
   it("should handle empty password", () => {
     const result = pbkdf2Sha256(WebBuf.alloc(0), WebBuf.fromUtf8("salt"), 1, 32);
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
   });
 
   it("should handle empty salt", () => {
     const result = pbkdf2Sha256(WebBuf.fromUtf8("password"), WebBuf.alloc(0), 1, 32);
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
   });
 
   it("should handle single iteration", () => {
@@ -149,7 +149,7 @@ describe("Audit: Edge cases", () => {
       1,
       32,
     );
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
   });
 
   it("should handle key length of 1", () => {
@@ -159,7 +159,7 @@ describe("Audit: Edge cases", () => {
       1,
       1,
     );
-    expect(result.length).toBe(1);
+    expect(result.buf.length).toBe(1);
   });
 
   it("should handle max key length (128)", () => {
@@ -169,7 +169,7 @@ describe("Audit: Edge cases", () => {
       1,
       128,
     );
-    expect(result.length).toBe(128);
+    expect(result.buf.length).toBe(128);
   });
 
   it("should reject zero iterations", () => {
@@ -193,13 +193,13 @@ describe("Audit: Edge cases", () => {
   it("should handle long password", () => {
     const longPassword = WebBuf.alloc(1000, 0x41); // 1000 'A's
     const result = pbkdf2Sha256(longPassword, WebBuf.fromUtf8("salt"), 1, 32);
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
   });
 
   it("should handle long salt", () => {
     const longSalt = WebBuf.alloc(1000, 0x42); // 1000 'B's
     const result = pbkdf2Sha256(WebBuf.fromUtf8("password"), longSalt, 1, 32);
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
   });
 });
 
@@ -211,7 +211,7 @@ describe("Audit: Higher iteration counts", () => {
       10000,
       32,
     );
-    expect(result.length).toBe(32);
+    expect(result.buf.length).toBe(32);
     // Should not be all zeros
     expect(result.toHex()).not.toBe("0".repeat(64));
   });
