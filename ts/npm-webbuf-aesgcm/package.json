@@ -1,7 +1,7 @@
 {
-  "name": "webbuf",
+  "name": "@webbuf/aesgcm",
   "version": "3.5.0",
-  "description": "Rust/WASM optimized buffers for the web, node.js, deno, and bun.",
+  "description": "Rust/wasm optimized AES-GCM authenticated encryption for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
     "url": "https://github.com/identellica/webbuf"
@@ -11,14 +11,16 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf dist",
-    "benchmark": "vitest --config vitest.benchmark.config.ts run",
     "test": "vitest --run",
-    "test:browser": "vitest --run --browser",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --fix",
     "format": "prettier --write . --ignore-path ../.prettierignore",
     "fix": "pnpm run typecheck && pnpm run lint && pnpm run format",
-    "build": "pnpm run build:typescript",
+    "sync:from-rust": "cp -r ../../rs/webbuf_aesgcm/build/bundler/* src/rs-webbuf_aesgcm-bundler/",
+    "build": "pnpm run build:wasm && pnpm run build:typescript",
+    "build:bundler-to-inline-base64": "cp -r src/rs-webbuf_aesgcm-bundler/* src/rs-webbuf_aesgcm-inline-base64/",
+    "build:inline-wasm": "tsx build-inline-wasm.ts",
+    "build:wasm": "pnpm run build:bundler-to-inline-base64 && pnpm run build:inline-wasm",
     "build:typescript": "tsc -p tsconfig.build.json",
     "prepublishOnly": "pnpm run clean && pnpm run build"
   },
@@ -27,37 +29,18 @@
   },
   "packageManager": "pnpm@9.12.3+sha256.24235772cc4ac82a62627cd47f834c72667a2ce87799a846ec4e8e555e2d4b8b",
   "keywords": [
-    "buffer",
-    "base64",
-    "hex",
-    "uint256",
-    "int256",
-    "uint128",
-    "int128",
+    "aes",
+    "gcm",
+    "aead",
+    "authenticated-encryption",
+    "nist",
     "rust",
     "wasm"
   ],
   "author": "Identellica LLC",
   "license": "MIT",
-  "dependencies": {
-    "@webbuf/acb3": "workspace:^",
-    "@webbuf/acb3dh": "workspace:^",
-    "@webbuf/acb3p256dh": "workspace:^",
-    "@webbuf/acs2": "workspace:^",
-    "@webbuf/acs2dh": "workspace:^",
-    "@webbuf/acs2p256dh": "workspace:^",
-    "@webbuf/aescbc": "workspace:^",
-    "@webbuf/aesgcm": "workspace:^",
-    "@webbuf/aesgcm-p256dh": "workspace:^",
-    "@webbuf/blake3": "workspace:^",
+  "peerDependencies": {
     "@webbuf/fixedbuf": "workspace:^",
-    "@webbuf/numbers": "workspace:^",
-    "@webbuf/ripemd160": "workspace:^",
-    "@webbuf/rw": "workspace:^",
-    "@webbuf/p256": "workspace:^",
-    "@webbuf/pbkdf2-sha256": "workspace:^",
-    "@webbuf/secp256k1": "workspace:^",
-    "@webbuf/sha256": "workspace:^",
     "@webbuf/webbuf": "workspace:^"
   },
   "devDependencies": {

@@ -1,0 +1,22 @@
+[package]
+name = "webbuf_aesgcm"
+description = "Rust WASM AES-GCM authenticated encryption"
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc"] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dev-dependencies]
+hex-literal = "0.4.1"
+hex = "0.4.3"

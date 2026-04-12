@@ -8,6 +8,8 @@ export * from "@webbuf/ripemd160";
 export * from "@webbuf/secp256k1";
 export * from "@webbuf/p256";
 export * from "@webbuf/aescbc";
+export * from "@webbuf/aesgcm";
+export * from "@webbuf/aesgcm-p256dh";
 export * from "@webbuf/acb3";
 export * from "@webbuf/acb3dh";
 export * from "@webbuf/acb3p256dh";
