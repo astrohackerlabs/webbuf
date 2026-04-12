@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/pbkdf2-sha256",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "Rust/wasm optimized PBKDF2-HMAC-SHA256 password-based key derivation for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
