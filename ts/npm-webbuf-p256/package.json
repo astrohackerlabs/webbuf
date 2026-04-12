@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/p256",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "Rust/wasm optimized P-256 (NIST) ECDSA and Diffie-Hellman for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
