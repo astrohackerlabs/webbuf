@@ -894,7 +894,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "base32",
  "base64",
@@ -904,7 +904,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_aescbc"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "aes",
  "serde",
@@ -914,7 +914,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_aesgcm"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "aes-gcm",
  "hex",
@@ -924,17 +924,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_blake3"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd76f6abce42a6260ce4b13490cc68e5a7559def2b766d3d410b0c37ed1fcd27"
-dependencies = [
- "blake3",
- "hex",
-]
-
-[[package]]
-name = "webbuf_blake3"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "blake3",
  "hex",
@@ -943,7 +933,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_p256"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "env_logger",
  "hex",
@@ -953,12 +943,12 @@ dependencies = [
  "rfc6979",
  "sha2",
  "wasm-bindgen",
- "webbuf_blake3 0.8.5",
+ "webbuf_blake3",
 ]
 
 [[package]]
 name = "webbuf_pbkdf2_sha256"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "hex",
  "hex-literal",
@@ -970,7 +960,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_ripemd160"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "hex",
  "ripemd",
@@ -979,7 +969,7 @@ dependencies = [
 
 [[package]]
 name = "webbuf_secp256k1"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "env_logger",
  "hex",
@@ -990,12 +980,12 @@ dependencies = [
  "secp256k1",
  "sha2",
  "wasm-bindgen",
- "webbuf_blake3 0.8.5",
+ "webbuf_blake3",
 ]
 
 [[package]]
 name = "webbuf_sha256"
-version = "0.15.0"
+version = "0.15.1"
 dependencies = [
  "hex",
  "hmac",
