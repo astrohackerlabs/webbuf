@@ -1,0 +1,24 @@
+[package]
+name = "webbuf_pbkdf2_sha256"
+description = "Rust WASM PBKDF2-HMAC-SHA256 password-based key derivation"
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+sha2 = "0.10"
+hmac = "0.12"
+pbkdf2 = "0.12"
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+hex = "0.4.3"
+hex-literal = "0.4.1"

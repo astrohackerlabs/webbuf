@@ -59,6 +59,9 @@ importers:
       '@webbuf/p256':
         specifier: workspace:^
         version: link:../npm-webbuf-p256
+      '@webbuf/pbkdf2-sha256':
+        specifier: workspace:^
+        version: link:../npm-webbuf-pbkdf2-sha256
       '@webbuf/ripemd160':
         specifier: workspace:^
         version: link:../npm-webbuf-ripemd160
@@ -596,6 +599,46 @@ importers:
       '@webbuf/blake3':
         specifier: workspace:^
         version: link:../npm-webbuf-blake3
+      buffer:
+        specifier: ^6.0.3
+        version: 6.0.3
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.1
+      prettier:
+        specifier: ^3.4.2
+        version: 3.7.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.2
+      tsx:
+        specifier: ^4.19.2
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.8.3
+      typescript-eslint:
+        specifier: ^8.21.0
+        version: 8.48.1(eslint@9.39.1)(typescript@5.8.3)
+      vite:
+        specifier: ^6.1.0
+        version: 6.4.1(@types/node@22.19.2)(tsx@4.21.0)
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.4(@types/node@22.19.2)(tsx@4.21.0)
+
+  npm-webbuf-pbkdf2-sha256:
+    dependencies:
+      '@webbuf/webbuf':
+        specifier: workspace:^
+        version: link:../npm-webbuf-webbuf
+    devDependencies:
+      '@eslint/js':
+        specifier: ^9.18.0
+        version: 9.39.1
+      '@types/node':
+        specifier: ^22.13.2
+        version: 22.19.2
       buffer:
         specifier: ^6.0.3
         version: 6.0.3

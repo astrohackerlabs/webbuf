@@ -14,3 +14,4 @@ export * from "@webbuf/acb3p256dh";
 export * from "@webbuf/acs2";
 export * from "@webbuf/acs2dh";
 export * from "@webbuf/acs2p256dh";
+export * from "@webbuf/pbkdf2-sha256";
