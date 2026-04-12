@@ -95,6 +95,48 @@ const pub2 = p256PublicKeyCreate(priv2);
 const combinedPub = p256PublicKeyAdd(pub1, pub2);
 ```
 
+### Web Crypto Interop
+
+Convert webbuf's compressed storage format to/from the Web Crypto API (`crypto.subtle`).
+
+```typescript
+import {
+  p256PublicKeyToJwk,
+  p256PrivateKeyToJwk,
+  p256PublicKeyFromJwk,
+  p256PublicKeyCreate,
+} from "@webbuf/p256";
+
+const priv = FixedBuf.fromRandom<32>(32);
+const pub = p256PublicKeyCreate(priv);
+
+// Import public key into Web Crypto (for verify or ECDH)
+const pubJwk = p256PublicKeyToJwk(pub);
+const verifyKey = await crypto.subtle.importKey(
+  "jwk",
+  pubJwk,
+  { name: "ECDSA", namedCurve: "P-256" },
+  false,
+  ["verify"],
+);
+
+// Import private key into Web Crypto (for sign or ECDH)
+// p256PrivateKeyToJwk derives the public x/y coordinates internally,
+// since Web Crypto requires them alongside d.
+const privJwk = p256PrivateKeyToJwk(priv);
+const signKey = await crypto.subtle.importKey(
+  "jwk",
+  privJwk,
+  { name: "ECDSA", namedCurve: "P-256" },
+  false,
+  ["sign"],
+);
+
+// Convert Web Crypto JWK back to compressed storage format
+const exported = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+const compressed = p256PublicKeyFromJwk(exported);
+```
+
 ## API
 
 | Function                                                  | Description                   |
@@ -107,6 +149,11 @@ const combinedPub = p256PublicKeyAdd(pub1, pub2);
 | `p256Sign(hash, privKey, k): FixedBuf<64>`                | Sign with nonce k             |
 | `p256Verify(sig, hash, pubKey): boolean`                  | Verify signature              |
 | `p256SharedSecret(privKey, pubKey): FixedBuf<33>`         | ECDH shared secret            |
+| `p256PublicKeyDecompress(c: FixedBuf<33>): FixedBuf<65>`  | 33-byte → 65-byte SEC1        |
+| `p256PublicKeyCompress(u: FixedBuf<65>): FixedBuf<33>`    | 65-byte → 33-byte SEC1        |
+| `p256PublicKeyToJwk(c: FixedBuf<33>): P256PublicKeyJwk`   | Compressed → JWK              |
+| `p256PrivateKeyToJwk(p: FixedBuf<32>): P256PrivateKeyJwk` | Scalar → JWK (with x, y)      |
+| `p256PublicKeyFromJwk(jwk): FixedBuf<33>`                 | JWK → compressed              |
 
 ## License
 

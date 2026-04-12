@@ -48,6 +48,37 @@ pub fn public_key_create(priv_key_buf: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn public_key_decompress(compressed: &[u8]) -> Result<Vec<u8>, String> {
+    if compressed.len() != 33 {
+        return Err("Compressed public key must be exactly 33 bytes".to_string());
+    }
+    if compressed[0] != 0x02 && compressed[0] != 0x03 {
+        return Err("Compressed public key must start with 0x02 or 0x03".to_string());
+    }
+
+    let public_key = PublicKey::from_sec1_bytes(compressed)
+        .map_err(|_| "Invalid compressed public key".to_string())?;
+
+    // to_encoded_point(false) emits 0x04 || X || Y with fixed 32-byte coordinates
+    Ok(public_key.to_encoded_point(false).as_bytes().to_vec())
+}
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn public_key_compress(uncompressed: &[u8]) -> Result<Vec<u8>, String> {
+    if uncompressed.len() != 65 {
+        return Err("Uncompressed public key must be exactly 65 bytes".to_string());
+    }
+    if uncompressed[0] != 0x04 {
+        return Err("Uncompressed public key must start with 0x04".to_string());
+    }
+
+    let public_key = PublicKey::from_sec1_bytes(uncompressed)
+        .map_err(|_| "Invalid uncompressed public key".to_string())?;
+
+    Ok(public_key.to_encoded_point(true).as_bytes().to_vec())
+}
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub fn private_key_add(priv_key_buf_1: &[u8], priv_key_buf_2: &[u8]) -> Result<Vec<u8>, String> {
     if priv_key_buf_1.len() != 32 || priv_key_buf_2.len() != 32 {
         return Err("Private keys must be exactly 32 bytes".to_string());
@@ -291,6 +322,111 @@ mod tests {
         let expected_pub_key = public_key_create(&combined_priv_key).unwrap();
 
         assert_eq!(combined_pub_key, expected_pub_key);
+    }
+
+    #[test]
+    fn test_compress_decompress_roundtrip() {
+        // For several deterministic private keys, derive the compressed public key,
+        // decompress it, then recompress, and verify round-trip.
+        for seed in 1u8..=5 {
+            let priv_key = [seed; 32];
+            let compressed = public_key_create(&priv_key).unwrap();
+            assert_eq!(compressed.len(), 33);
+
+            let uncompressed = public_key_decompress(&compressed).unwrap();
+            assert_eq!(uncompressed.len(), 65);
+            assert_eq!(uncompressed[0], 0x04);
+
+            let recompressed = public_key_compress(&uncompressed).unwrap();
+            assert_eq!(recompressed, compressed);
+        }
+    }
+
+    #[test]
+    fn test_decompress_structure() {
+        // Uncompressed form is 0x04 || X(32) || Y(32)
+        let priv_key = [0x01; 32];
+        let compressed = public_key_create(&priv_key).unwrap();
+        let uncompressed = public_key_decompress(&compressed).unwrap();
+
+        assert_eq!(uncompressed[0], 0x04);
+        // X coordinate matches the compressed key's X (bytes 1..33 of both)
+        assert_eq!(&uncompressed[1..33], &compressed[1..33]);
+        // Y parity matches the compressed prefix
+        let y_is_odd = (uncompressed[64] & 1) == 1;
+        let prefix_says_odd = compressed[0] == 0x03;
+        assert_eq!(y_is_odd, prefix_says_odd);
+    }
+
+    #[test]
+    fn test_decompress_even_and_odd_y() {
+        // Scalar 1 → generator point G. G has a known Y parity on P-256.
+        // Scalar 2 → 2G with the opposite parity.
+        // We don't hardcode the specific parity; we just verify both parities appear
+        // across some keys, proving both 0x02 and 0x03 prefixes work.
+        let mut saw_even = false;
+        let mut saw_odd = false;
+
+        for seed in 1u8..=20 {
+            let priv_key = [seed; 32];
+            if !private_key_verify(&priv_key) {
+                continue;
+            }
+            let compressed = public_key_create(&priv_key).unwrap();
+            match compressed[0] {
+                0x02 => saw_even = true,
+                0x03 => saw_odd = true,
+                _ => panic!("Unexpected compressed prefix"),
+            }
+            // Decompress should succeed for both parities.
+            let uncompressed = public_key_decompress(&compressed).unwrap();
+            assert_eq!(uncompressed[0], 0x04);
+        }
+
+        assert!(saw_even, "Expected at least one key with even Y (0x02)");
+        assert!(saw_odd, "Expected at least one key with odd Y (0x03)");
+    }
+
+    #[test]
+    fn test_compress_rejects_wrong_prefix() {
+        // Start with a valid uncompressed, change prefix to 0x05 (invalid).
+        let priv_key = [0x01; 32];
+        let compressed = public_key_create(&priv_key).unwrap();
+        let mut uncompressed = public_key_decompress(&compressed).unwrap();
+        uncompressed[0] = 0x05;
+        assert!(public_key_compress(&uncompressed).is_err());
+    }
+
+    #[test]
+    fn test_compress_rejects_wrong_length() {
+        assert!(public_key_compress(&[0x04; 64]).is_err());
+        assert!(public_key_compress(&[0x04; 66]).is_err());
+        assert!(public_key_compress(&[]).is_err());
+    }
+
+    #[test]
+    fn test_decompress_rejects_wrong_prefix() {
+        // Build a 33-byte buffer with prefix 0x04 (invalid for compressed).
+        let mut bad = [0u8; 33];
+        bad[0] = 0x04;
+        assert!(public_key_decompress(&bad).is_err());
+    }
+
+    #[test]
+    fn test_decompress_rejects_wrong_length() {
+        assert!(public_key_decompress(&[0x02; 32]).is_err());
+        assert!(public_key_decompress(&[0x02; 34]).is_err());
+        assert!(public_key_decompress(&[]).is_err());
+    }
+
+    #[test]
+    fn test_compress_rejects_off_curve() {
+        // 0x04 || X || Y where the point is not on the curve.
+        let mut off_curve = [0u8; 65];
+        off_curve[0] = 0x04;
+        off_curve[1..33].fill(0xff);
+        off_curve[33..65].fill(0xff);
+        assert!(public_key_compress(&off_curve).is_err());
     }
 
     #[test]

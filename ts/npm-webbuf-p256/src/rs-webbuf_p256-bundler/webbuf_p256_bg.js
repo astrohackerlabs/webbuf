@@ -100,6 +100,22 @@ export function public_key_add(pub_key_buf_1, pub_key_buf_2) {
 }
 
 /**
+ * @param {Uint8Array} uncompressed
+ * @returns {Uint8Array}
+ */
+export function public_key_compress(uncompressed) {
+    const ptr0 = passArray8ToWasm0(uncompressed, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.public_key_compress(ptr0, len0);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
  * @param {Uint8Array} priv_key_buf
  * @returns {Uint8Array}
  */
@@ -107,6 +123,22 @@ export function public_key_create(priv_key_buf) {
     const ptr0 = passArray8ToWasm0(priv_key_buf, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.public_key_create(ptr0, len0);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v2 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v2;
+}
+
+/**
+ * @param {Uint8Array} compressed
+ * @returns {Uint8Array}
+ */
+export function public_key_decompress(compressed) {
+    const ptr0 = passArray8ToWasm0(compressed, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ret = wasm.public_key_decompress(ptr0, len0);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }

@@ -7,7 +7,11 @@ export function private_key_verify(priv_key_buf: Uint8Array): boolean;
 
 export function public_key_add(pub_key_buf_1: Uint8Array, pub_key_buf_2: Uint8Array): Uint8Array;
 
+export function public_key_compress(uncompressed: Uint8Array): Uint8Array;
+
 export function public_key_create(priv_key_buf: Uint8Array): Uint8Array;
+
+export function public_key_decompress(compressed: Uint8Array): Uint8Array;
 
 export function public_key_verify(pub_key_buf: Uint8Array): boolean;
 
