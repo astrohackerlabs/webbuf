@@ -19,21 +19,33 @@ npm install @webbuf/webbuf @webbuf/fixedbuf @webbuf/sha256 # etc.
 
 ## Package Overview
 
-| Package             | Description                                                        |
-| ------------------- | ------------------------------------------------------------------ |
-| `@webbuf/webbuf`    | Core `WebBuf` class - extended Uint8Array with hex/base64/base32 encoding |
-| `@webbuf/fixedbuf`  | `FixedBuf<N>` - compile-time sized buffer wrapper                  |
-| `@webbuf/numbers`   | Fixed-size integers (U8, U16BE, U32LE, U64BE, U128, U256, etc.)    |
-| `@webbuf/rw`        | `BufReader` and `BufWriter` for sequential binary I/O              |
-| `@webbuf/blake3`    | BLAKE3 hash and keyed MAC                                          |
-| `@webbuf/sha256`    | SHA-256 hash and HMAC-SHA256                                       |
-| `@webbuf/ripemd160` | RIPEMD-160 hash                                                    |
-| `@webbuf/secp256k1` | ECDSA signatures and ECDH key exchange                             |
-| `@webbuf/aescbc`    | AES-CBC encryption (no authentication)                             |
-| `@webbuf/acb3`      | AES-CBC + BLAKE3 MAC (authenticated encryption)                    |
-| `@webbuf/acb3dh`    | ACB3 + ECDH key exchange                                           |
-| `@webbuf/acs2`      | AES-CBC + SHA-256 HMAC (authenticated encryption)                  |
-| `@webbuf/acs2dh`    | ACS2 + ECDH key exchange                                           |
+| Package | Description |
+| --- | --- |
+| **Core** | |
+| `@webbuf/webbuf` | Core `WebBuf` class - extended Uint8Array with hex/base64/base32 encoding |
+| `@webbuf/fixedbuf` | `FixedBuf<N>` - compile-time sized buffer wrapper |
+| `@webbuf/numbers` | Fixed-size integers (U8, U16BE, U32LE, U64BE, U128, U256, etc.) |
+| `@webbuf/rw` | `BufReader` and `BufWriter` for sequential binary I/O |
+| **Hashing** | |
+| `@webbuf/blake3` | BLAKE3 hash and keyed MAC |
+| `@webbuf/sha256` | SHA-256 hash and HMAC-SHA256 |
+| `@webbuf/ripemd160` | RIPEMD-160 hash |
+| **Key Derivation** | |
+| `@webbuf/pbkdf2-sha256` | PBKDF2-HMAC-SHA256 password-based key derivation |
+| **Elliptic Curves** | |
+| `@webbuf/secp256k1` | secp256k1 ECDSA signatures and ECDH key exchange |
+| `@webbuf/p256` | P-256 (NIST) ECDSA signatures and ECDH key exchange |
+| **Encryption (CBC)** | |
+| `@webbuf/aescbc` | AES-CBC encryption (no authentication) |
+| `@webbuf/acb3` | AES-CBC + BLAKE3 MAC (authenticated encryption) |
+| `@webbuf/acs2` | AES-CBC + SHA-256 HMAC (authenticated encryption) |
+| `@webbuf/acb3dh` | ACB3 + secp256k1 ECDH key exchange |
+| `@webbuf/acs2dh` | ACS2 + secp256k1 ECDH key exchange |
+| `@webbuf/acb3p256dh` | ACB3 + P-256 ECDH key exchange |
+| `@webbuf/acs2p256dh` | ACS2 + P-256 ECDH key exchange |
+| **Encryption (GCM)** | |
+| `@webbuf/aesgcm` | AES-GCM authenticated encryption (AEAD) |
+| `@webbuf/aesgcm-p256dh` | AES-GCM + P-256 ECDH + SHA-256 key derivation (fully NIST-approved) |
 
 ---
 
@@ -159,10 +171,11 @@ const reversed = key.toReverse();
 
 | Size           | Common Use                                           |
 | -------------- | ---------------------------------------------------- |
-| `FixedBuf<16>` | AES IV, AES-128 key, UUIDs                           |
+| `FixedBuf<12>` | AES-GCM nonce                                        |
+| `FixedBuf<16>` | AES-CBC IV, AES-128 key, UUIDs                       |
 | `FixedBuf<20>` | RIPEMD-160 hash                                      |
 | `FixedBuf<32>` | SHA-256 hash, BLAKE3 hash, private keys, AES-256 key |
-| `FixedBuf<33>` | Compressed public key (secp256k1)                    |
+| `FixedBuf<33>` | Compressed public key (secp256k1, P-256)             |
 | `FixedBuf<64>` | ECDSA signature                                      |
 
 ---
@@ -279,9 +292,21 @@ const hash = ripemd160Hash(data);           // FixedBuf<20>
 const double = doubleRipemd160Hash(data);   // FixedBuf<20>
 ```
 
+### PBKDF2-HMAC-SHA256 (@webbuf/pbkdf2-sha256)
+
+```typescript
+import { pbkdf2Sha256 } from "@webbuf/pbkdf2-sha256";
+
+const password = WebBuf.fromUtf8("my password");
+const salt = WebBuf.fromUtf8("random salt");
+const derivedKey = pbkdf2Sha256(password, salt, 100_000, 32);  // WebBuf (32 bytes)
+```
+
 ---
 
-## Elliptic Curves (@webbuf/secp256k1)
+## Elliptic Curves
+
+### secp256k1 (@webbuf/secp256k1)
 
 ECDSA signatures and ECDH key exchange on the secp256k1 curve.
 
@@ -317,6 +342,26 @@ const alicePub = publicKeyCreate(alicePriv);
 const bobPub = publicKeyCreate(bobPriv);
 const secretA = sharedSecret(alicePriv, bobPub);  // FixedBuf<33>
 const secretB = sharedSecret(bobPriv, alicePub);  // Same as secretA
+```
+
+### P-256 / NIST (@webbuf/p256)
+
+ECDSA signatures and ECDH key exchange on the NIST P-256 curve. Same API shape as secp256k1, with `p256` prefix on all functions.
+
+```typescript
+import {
+  p256PrivateKeyVerify, p256PublicKeyVerify, p256PublicKeyCreate,
+  p256PrivateKeyAdd, p256PublicKeyAdd,
+  p256Sign, p256Verify, p256SharedSecret
+} from "@webbuf/p256";
+
+const privKey = FixedBuf.fromRandom<32>(32);
+const pubKey = p256PublicKeyCreate(privKey);          // FixedBuf<33>
+
+const signature = p256Sign(messageHash, privKey, k);  // FixedBuf<64>
+p256Verify(signature, messageHash, pubKey);            // true if valid
+
+const shared = p256SharedSecret(alicePriv, bobPub);    // FixedBuf<33>
 ```
 
 ---
@@ -425,6 +470,55 @@ const ciphertext = acs2dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"
 const plaintext = acs2dhDecrypt(bobPriv, alicePub, ciphertext);
 ```
 
+### P-256 DH Variants (@webbuf/acb3p256dh, @webbuf/acs2p256dh)
+
+Same as ACB3DH and ACS2DH, but using the P-256 (NIST) curve instead of secp256k1.
+
+```typescript
+import { acb3p256dhEncrypt, acb3p256dhDecrypt } from "@webbuf/acb3p256dh";
+import { acs2p256dhEncrypt, acs2p256dhDecrypt } from "@webbuf/acs2p256dh";
+import { p256PublicKeyCreate } from "@webbuf/p256";
+
+const alicePriv = FixedBuf.fromRandom<32>(32);
+const alicePub = p256PublicKeyCreate(alicePriv);
+const bobPriv = FixedBuf.fromRandom<32>(32);
+const bobPub = p256PublicKeyCreate(bobPriv);
+
+const ciphertext = acb3p256dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello!"));
+const plaintext = acb3p256dhDecrypt(bobPriv, alicePub, ciphertext);
+```
+
+### AES-GCM (@webbuf/aesgcm)
+
+AES-GCM authenticated encryption (AEAD). No separate MAC needed.
+
+```typescript
+import { aesgcmEncrypt, aesgcmDecrypt } from "@webbuf/aesgcm";
+
+const key = FixedBuf.fromRandom<32>(32);  // AES-256
+const plaintext = WebBuf.fromUtf8("Secret");
+
+const ciphertext = aesgcmEncrypt(plaintext, key);  // Nonce prepended, tag appended
+const decrypted = aesgcmDecrypt(ciphertext, key);  // Verifies auth tag
+```
+
+### AES-GCM + P-256 DH (@webbuf/aesgcm-p256dh)
+
+Fully NIST-approved construction: P-256 ECDH + SHA-256 key derivation + AES-256-GCM.
+
+```typescript
+import { aesgcmP256dhEncrypt, aesgcmP256dhDecrypt } from "@webbuf/aesgcm-p256dh";
+import { p256PublicKeyCreate } from "@webbuf/p256";
+
+const alicePriv = FixedBuf.fromRandom<32>(32);
+const alicePub = p256PublicKeyCreate(alicePriv);
+const bobPriv = FixedBuf.fromRandom<32>(32);
+const bobPub = p256PublicKeyCreate(bobPriv);
+
+const ciphertext = aesgcmP256dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"));
+const plaintext = aesgcmP256dhDecrypt(bobPriv, alicePub, ciphertext);
+```
+
 ---
 
 ## Common Patterns
@@ -508,28 +602,37 @@ const ripemd: FixedBuf<20> = ripemd160Hash(data);
 
 ```
 webbuf/
-├── rs/                         # Rust crates (compiled to WASM)
-│   ├── webbuf/                 # Base64/hex encoding
-│   ├── webbuf_blake3/          # BLAKE3
-│   ├── webbuf_sha256/          # SHA-256
-│   ├── webbuf_ripemd160/       # RIPEMD-160
-│   ├── webbuf_secp256k1/       # secp256k1
-│   └── webbuf_aescbc/          # AES-CBC
-└── ts/                         # TypeScript packages
-    ├── npm-webbuf-webbuf/      # @webbuf/webbuf
-    ├── npm-webbuf-fixedbuf/    # @webbuf/fixedbuf
-    ├── npm-webbuf-numbers/     # @webbuf/numbers
-    ├── npm-webbuf-rw/          # @webbuf/rw
-    ├── npm-webbuf-blake3/      # @webbuf/blake3
-    ├── npm-webbuf-sha256/      # @webbuf/sha256
-    ├── npm-webbuf-ripemd160/   # @webbuf/ripemd160
-    ├── npm-webbuf-secp256k1/   # @webbuf/secp256k1
-    ├── npm-webbuf-aescbc/      # @webbuf/aescbc
-    ├── npm-webbuf-acb3/        # @webbuf/acb3
-    ├── npm-webbuf-acb3dh/      # @webbuf/acb3dh
-    ├── npm-webbuf-acs2/        # @webbuf/acs2
-    ├── npm-webbuf-acs2dh/      # @webbuf/acs2dh
-    └── npm-webbuf/             # webbuf (re-exports all)
+├── rs/                              # Rust crates (compiled to WASM)
+│   ├── webbuf/                      # Base64/hex encoding
+│   ├── webbuf_blake3/               # BLAKE3
+│   ├── webbuf_sha256/               # SHA-256
+│   ├── webbuf_ripemd160/            # RIPEMD-160
+│   ├── webbuf_secp256k1/            # secp256k1
+│   ├── webbuf_p256/                 # P-256 (NIST)
+│   ├── webbuf_aescbc/               # AES-CBC
+│   ├── webbuf_aesgcm/               # AES-GCM
+│   └── webbuf_pbkdf2_sha256/        # PBKDF2-HMAC-SHA256
+└── ts/                              # TypeScript packages
+    ├── npm-webbuf-webbuf/           # @webbuf/webbuf
+    ├── npm-webbuf-fixedbuf/         # @webbuf/fixedbuf
+    ├── npm-webbuf-numbers/          # @webbuf/numbers
+    ├── npm-webbuf-rw/               # @webbuf/rw
+    ├── npm-webbuf-blake3/           # @webbuf/blake3
+    ├── npm-webbuf-sha256/           # @webbuf/sha256
+    ├── npm-webbuf-ripemd160/        # @webbuf/ripemd160
+    ├── npm-webbuf-pbkdf2-sha256/    # @webbuf/pbkdf2-sha256
+    ├── npm-webbuf-secp256k1/        # @webbuf/secp256k1
+    ├── npm-webbuf-p256/             # @webbuf/p256
+    ├── npm-webbuf-aescbc/           # @webbuf/aescbc
+    ├── npm-webbuf-aesgcm/           # @webbuf/aesgcm
+    ├── npm-webbuf-acb3/             # @webbuf/acb3
+    ├── npm-webbuf-acb3dh/           # @webbuf/acb3dh
+    ├── npm-webbuf-acb3p256dh/       # @webbuf/acb3p256dh
+    ├── npm-webbuf-acs2/             # @webbuf/acs2
+    ├── npm-webbuf-acs2dh/           # @webbuf/acs2dh
+    ├── npm-webbuf-acs2p256dh/       # @webbuf/acs2p256dh
+    ├── npm-webbuf-aesgcm-p256dh/    # @webbuf/aesgcm-p256dh
+    └── npm-webbuf/                  # webbuf (re-exports all)
 ```
 
 ## Security Audits
