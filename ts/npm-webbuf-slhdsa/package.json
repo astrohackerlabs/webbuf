@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/slhdsa",
-  "version": "0.15.1",
+  "version": "3.6.0",
   "description": "Rust/wasm SLH-DSA (FIPS 205) post-quantum hash-based digital signatures for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",

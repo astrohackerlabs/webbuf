@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/mlkem",
-  "version": "0.15.1",
+  "version": "3.6.0",
   "description": "Rust/wasm ML-KEM (FIPS 203) post-quantum key encapsulation for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",

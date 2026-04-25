@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/aesgcm",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Rust/wasm optimized AES-GCM authenticated encryption for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
