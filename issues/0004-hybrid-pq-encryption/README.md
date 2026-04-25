@@ -649,6 +649,215 @@ The next experiment is `@webbuf/aesgcm-mlkem`. Build it first because it's the
 simpler of the two packages and validates the HKDF helper, the wire format, and
 the test infrastructure before the hybrid combiner adds a second moving piece.
 
+## Experiment 2: Implement `@webbuf/aesgcm-mlkem`
+
+### Goal
+
+Build the pure-PQC encryption package per the Experiment 1 spec. Ship a
+TypeScript-only package that takes an ML-KEM-768 encapsulation key and a
+plaintext, performs ML-KEM encapsulation + HKDF-SHA-256 key derivation +
+AES-256-GCM encryption, and produces a wire format matching the captured KAT
+byte-for-byte.
+
+### Why this experiment is small and well-defined
+
+All the design questions were settled in Experiment 1:
+
+- KDF, salt, info string, IKM shape (just `kemSharedSecret` for the pure-PQ
+  package), AES key length, IV strategy, wire format, version byte — all pinned
+  with concrete byte values.
+- The KAT (`SHA-256(ciphertext) = 680beaa6…8ef240`) is the load-bearing test
+  contract. If the implementation produces a different hash for the same inputs,
+  something has diverged.
+- The composition primitives (`@webbuf/mlkem`, `@webbuf/sha256`,
+  `@webbuf/aesgcm`) all exist and the capture script demonstrates that the spec
+  composes through them correctly.
+
+The implementation is therefore straightforward and the test bar is unambiguous.
+
+### Plan
+
+#### Package scaffold
+
+Create `ts/npm-webbuf-aesgcm-mlkem/` mirroring the existing TypeScript-only
+package layout (e.g. compare against an existing TS-only package; if there isn't
+one, follow the structure of the WASM packages but omit `build-inline-wasm.ts`,
+`sync:from-rust`, `build:wasm`, and the `src/rs-*-bundler` /
+`src/rs-*-inline-base64` directories).
+
+Required files:
+
+- `package.json` with peer deps on `@webbuf/webbuf`, `@webbuf/fixedbuf`,
+  `@webbuf/mlkem`, `@webbuf/sha256`, `@webbuf/aesgcm`. No Rust deps.
+- `tsconfig.json` and `tsconfig.build.json` matching the conventions in the
+  other packages.
+- `vitest.config.ts` (default).
+- `LICENSE` (copy from another package).
+- `README.md` documenting:
+  - Preferred high-level API (one encrypt + one decrypt function).
+  - Wire format byte-offset table (copy from issue 0004).
+  - Reference to issue 0004 and FIPS 203 / RFC 5869 / NIST SP 800-56C.
+  - Audit-posture caveat (no public audit of any Rust PQC crate).
+
+#### Internal HKDF helper
+
+Inside `src/hkdf.ts` (or inlined in `src/index.ts` if small enough):
+
+```typescript
+// HKDF-SHA-256 (RFC 5869) for output length L = 32 bytes.
+// Implements Extract + Expand in two HMAC-SHA-256 calls.
+export function hkdfSha256L32(
+  salt: FixedBuf<32>,
+  ikm: WebBuf,
+  info: WebBuf,
+): FixedBuf<32> {
+  const prk = sha256Hmac(salt.buf, ikm);
+  const t1Input = WebBuf.concat([info, WebBuf.fromArray([0x01])]);
+  return sha256Hmac(prk.buf, t1Input);
+}
+```
+
+Constants:
+
+```typescript
+const ZERO_SALT = FixedBuf.alloc(32);
+const INFO = WebBuf.fromUtf8("webbuf:aesgcm-mlkem v1");
+const VERSION = 0x01;
+const KEM_CT_SIZE = 1088;
+const IV_SIZE = 12;
+const TAG_SIZE = 16;
+const FIXED_OVERHEAD = 1 + KEM_CT_SIZE + IV_SIZE + TAG_SIZE; // 1117
+```
+
+#### Public API
+
+```typescript
+export function aesgcmMlkemEncrypt(
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+): WebBuf;
+
+export function aesgcmMlkemDecrypt(
+  decapKey: FixedBuf<2400>,
+  ciphertext: WebBuf,
+): WebBuf;
+```
+
+Encrypt body (~15 lines):
+
+1. `m = FixedBuf.fromRandom<32>(32)`
+2. `{ ciphertext: kemCt, sharedSecret } = mlKem768Encapsulate(recipientEncapKey, m)`
+3. `aesKey = hkdfSha256L32(ZERO_SALT, sharedSecret.buf, INFO)`
+4. `iv = FixedBuf.fromRandom<12>(12)`
+5. `aesPart = aesgcmEncrypt(plaintext, aesKey, iv)` // returns iv || ct || tag
+6. Return `WebBuf.concat([WebBuf.fromArray([VERSION]), kemCt.buf, aesPart])`
+
+Note: `aesgcmEncrypt` already prepends the IV to its output, so step 5 gives us
+the iv || ct || tag bytes directly. We don't need to manually prepend the IV
+again.
+
+Decrypt body (~20 lines):
+
+1. Validate `ciphertext.length >= FIXED_OVERHEAD`. If not, throw.
+2. Validate `ciphertext[0] === VERSION` (`0x01`). If not, throw with a clear
+   message naming the unexpected version byte.
+3. `kemCt = FixedBuf.fromBuf<1088>(1088, ciphertext.subarray(1, 1 + KEM_CT_SIZE))`
+4. `aesPart = ciphertext.subarray(1 + KEM_CT_SIZE)` // iv || ct || tag
+5. `sharedSecret = mlKem768Decapsulate(decapKey, kemCt)`
+6. `aesKey = hkdfSha256L32(ZERO_SALT, sharedSecret.buf, INFO)`
+7. `aesgcmDecrypt(aesPart, aesKey)` // also handles iv extraction internally per
+   `@webbuf/aesgcm`'s API; verify in implementation.
+8. Return the plaintext.
+
+If `aesgcmDecrypt` doesn't handle iv extraction, do it manually:
+`iv = aesPart.subarray(0, 12)`, `ctTag = aesPart.subarray(12)`, then pass `iv`
+explicitly. Verify the actual API in implementation.
+
+#### Wire it into the umbrella package
+
+Add `@webbuf/aesgcm-mlkem` as a dep in `ts/npm-webbuf/package.json` and
+re-export from `ts/npm-webbuf/src/index.ts`.
+
+### Test plan
+
+#### Unit tests (`test/index.test.ts`)
+
+1. **Round-trip with random inputs:** generate a fresh ML-KEM keypair, pick a
+   random plaintext, encrypt, decrypt, assert plaintext matches.
+2. **Round-trip with empty plaintext:** `WebBuf.alloc(0)` round-trips.
+3. **Round-trip with large plaintext:** 64 KiB random buffer round-trips.
+4. **Default encryption is non-deterministic:** two calls with the same key +
+   plaintext produce different ciphertexts (because `m` and the AES IV are
+   randomized).
+5. **Wire format size:** ciphertext length is exactly `1117 + plaintext.length`.
+6. **Version byte present:** `ciphertext[0] === 0x01`.
+7. **Wrong recipient rejected:** encrypt to recipient A, attempt decrypt with
+   recipient B's decapsulation key, expect throw (AES-GCM tag mismatch).
+8. **Tampered KEM ciphertext rejected:** flip a byte in `ciphertext[1..1089]`,
+   expect throw.
+9. **Tampered AES ciphertext rejected:** flip a byte in `ciphertext[1101..]`,
+   expect throw.
+10. **Tampered IV rejected:** flip a byte in `ciphertext[1089..1101]`, expect
+    throw.
+11. **Wrong version byte rejected:** replace `ciphertext[0]` with `0x02`, expect
+    throw with a clear "unexpected version byte" message.
+12. **Truncated ciphertext rejected:** truncate to 100 bytes, expect throw.
+
+#### KAT regression (`test/audit.test.ts` or similar)
+
+13. **KAT 1 from Experiment 1:** reproduce the inputs in the issue's
+    "`@webbuf/aesgcm-mlkem` v1 KAT" section. Use `mlKem768KeyPairDeterministic`
+    and a deterministic `m`. Encrypt with a fixed IV (the test will need a way
+    to inject the IV — see below). Assert
+    `sha256Hash(ciphertext).toHex() === "680beaa6d06d2324db4bf1545814f85fcc5f60ca7790ed5702779f497f8ef240"`.
+
+The KAT test requires the implementation to expose a way to inject deterministic
+randomness, since the public API generates `m` and `iv` internally. Options:
+
+- **Test-only internal export:** export an
+  `_aesgcmMlkemEncryptDeterministic(encapKey, plaintext, m, iv)` not documented
+  as public API but available for vector tests.
+- **Drop the KAT test:** rely solely on round-trip and the capture script's
+  external check.
+
+Recommend the test-only export. It's the same pattern `@webbuf/mldsa` uses
+(`SignDeterministic` aliases) and lets the implementation prove spec-compliance
+against the captured KAT. The exported function is explicitly named with a `_`
+prefix or in a separate `internal` module to discourage application use.
+
+### Success criteria
+
+- `pnpm test` passes all unit and KAT tests in `ts/npm-webbuf-aesgcm-mlkem`.
+- `pnpm run typecheck` clean.
+- `pnpm run build` produces a clean `dist/`.
+- Umbrella package re-exports the new functions and `pnpm test` /
+  `pnpm run typecheck` in `ts/npm-webbuf` stay green.
+- The KAT regression test asserts the exact SHA-256 hash from Experiment 1's
+  captured KAT.
+- Round-trip works across all three ML-KEM-768 keypairs (random, deterministic,
+  and one captured KAT keypair).
+
+### Risks
+
+1. **`@webbuf/aesgcm` API mismatch.** The current `aesgcmEncrypt` prepends the
+   IV to its output but `aesgcmDecrypt` may or may not handle IV extraction
+   internally. Need to verify during implementation; if not, parse the IV
+   manually in our decrypt path.
+2. **Type-level FixedBuf size on subarray.** Slicing `ciphertext` to produce a
+   `FixedBuf<1088>` requires the right API; if `subarray` returns plain
+   `WebBuf`, may need `FixedBuf.fromBuf(1088, ...)` to re-tag. Mechanical.
+3. **HKDF info-string encoding.** Must be exactly `"webbuf:aesgcm-mlkem v1"` as
+   UTF-8. The capture script uses `WebBuf.fromUtf8` and the KAT matches; the
+   implementation must use the same encoding.
+
+### Out of scope for this experiment
+
+- Hybrid encryption (Experiment 3).
+- Other ML-KEM security levels (ML-KEM-512, ML-KEM-1024).
+- Forward-secrecy variants.
+- A standalone `@webbuf/hkdf-sha256` package (defer until a second consumer
+  needs it).
+
 ## Plan
 
 Pin the key schedule and wire format first (Experiment 1, above), then build the
