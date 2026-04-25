@@ -178,6 +178,31 @@ export function shared_secret(priv_key_buf, pub_key_buf) {
 }
 
 /**
+ * Diffie-Hellman shared secret, returned as the raw 32-byte X-coordinate.
+ *
+ * This is the SEC1 X9.63 "Z" value used as input to a KDF in NIST SP
+ * 800-56A §5.7.1.2 and the IETF hybrid KEM combiners. Equivalent to
+ * `shared_secret` with the SEC1 prefix byte stripped — the prefix is
+ * deterministic given the X-coordinate, so removing it loses no entropy.
+ * @param {Uint8Array} priv_key_buf
+ * @param {Uint8Array} pub_key_buf
+ * @returns {Uint8Array}
+ */
+export function shared_secret_raw(priv_key_buf, pub_key_buf) {
+    const ptr0 = passArray8ToWasm0(priv_key_buf, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(pub_key_buf, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ret = wasm.shared_secret_raw(ptr0, len0, ptr1, len1);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v3 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v3;
+}
+
+/**
  * @param {Uint8Array} hash_buf
  * @param {Uint8Array} priv_key_buf
  * @param {Uint8Array} k_buf

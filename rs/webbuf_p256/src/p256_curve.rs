@@ -261,6 +261,35 @@ pub fn shared_secret(priv_key_buf: &[u8], pub_key_buf: &[u8]) -> Result<Vec<u8>,
     Ok(encoded_point.as_bytes().to_vec())
 }
 
+/// Diffie-Hellman shared secret, returned as the raw 32-byte X-coordinate.
+///
+/// This is the SEC1 X9.63 "Z" value used as input to a KDF in NIST SP
+/// 800-56A §5.7.1.2 and the IETF hybrid KEM combiners. Equivalent to
+/// `shared_secret` with the SEC1 prefix byte stripped — the prefix is
+/// deterministic given the X-coordinate, so removing it loses no entropy.
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn shared_secret_raw(priv_key_buf: &[u8], pub_key_buf: &[u8]) -> Result<Vec<u8>, String> {
+    if priv_key_buf.len() != 32 {
+        return Err("Private key must be exactly 32 bytes".to_string());
+    }
+    if pub_key_buf.len() != 33 {
+        return Err("Public key must be 33 bytes in compressed format".to_string());
+    }
+
+    let secret_key =
+        SecretKey::from_slice(priv_key_buf).map_err(|_| "Invalid private key".to_string())?;
+    let nonzero_scalar = secret_key.to_nonzero_scalar();
+    let scalar: Scalar = *nonzero_scalar;
+
+    let pub_key =
+        PublicKey::from_sec1_bytes(pub_key_buf).map_err(|_| "Invalid public key".to_string())?;
+
+    let point = pub_key.as_affine();
+    let shared = point.mul(scalar).to_affine();
+    let x = shared.x();
+    Ok(x.to_vec())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -483,6 +512,69 @@ mod tests {
         let shared_secret_2 = shared_secret(&priv_key_2, &pub_key_1).unwrap();
 
         assert_eq!(shared_secret_1, shared_secret_2);
+    }
+
+    #[test]
+    fn test_shared_secret_raw_matches_compressed_x_coord() {
+        let priv_key_1: [u8; 32] = [
+            0x38, 0x49, 0x58, 0x49, 0xf8, 0x38, 0xe8, 0xd5, 0xf8, 0xc9, 0x4d, 0xf2, 0x7a, 0x3c,
+            0x91, 0x8d, 0x8e, 0xe9, 0x6a, 0xbf, 0x6b, 0x74, 0x5f, 0xb5, 0x4d, 0x82, 0x1b, 0xf9,
+            0x5b, 0x6e, 0x5d, 0xc3,
+        ];
+        let priv_key_2: [u8; 32] = [
+            0x55, 0x91, 0x22, 0x55, 0x18, 0xa9, 0x19, 0xf0, 0x2a, 0x3f, 0x8c, 0x9a, 0x7a, 0x1b,
+            0xc1, 0xe2, 0x9d, 0x81, 0x3c, 0xd8, 0x5a, 0x39, 0xe7, 0xaa, 0x89, 0x9d, 0xf4, 0x64,
+            0x5e, 0x4a, 0x6b, 0x91,
+        ];
+
+        let pub_key_2 = public_key_create(&priv_key_2).unwrap();
+
+        let compressed = shared_secret(&priv_key_1, &pub_key_2).unwrap();
+        let raw = shared_secret_raw(&priv_key_1, &pub_key_2).unwrap();
+
+        // Compressed is 33 bytes: [0x02 or 0x03, X0..X31]. Raw is the X-coord.
+        assert_eq!(compressed.len(), 33);
+        assert_eq!(raw.len(), 32);
+        assert_eq!(&compressed[1..], raw.as_slice());
+        assert!(compressed[0] == 0x02 || compressed[0] == 0x03);
+    }
+
+    #[test]
+    fn test_shared_secret_raw_symmetric() {
+        let priv_key_1: [u8; 32] = [
+            0x38, 0x49, 0x58, 0x49, 0xf8, 0x38, 0xe8, 0xd5, 0xf8, 0xc9, 0x4d, 0xf2, 0x7a, 0x3c,
+            0x91, 0x8d, 0x8e, 0xe9, 0x6a, 0xbf, 0x6b, 0x74, 0x5f, 0xb5, 0x4d, 0x82, 0x1b, 0xf9,
+            0x5b, 0x6e, 0x5d, 0xc3,
+        ];
+        let priv_key_2: [u8; 32] = [
+            0x55, 0x91, 0x22, 0x55, 0x18, 0xa9, 0x19, 0xf0, 0x2a, 0x3f, 0x8c, 0x9a, 0x7a, 0x1b,
+            0xc1, 0xe2, 0x9d, 0x81, 0x3c, 0xd8, 0x5a, 0x39, 0xe7, 0xaa, 0x89, 0x9d, 0xf4, 0x64,
+            0x5e, 0x4a, 0x6b, 0x91,
+        ];
+
+        let pub_key_1 = public_key_create(&priv_key_1).unwrap();
+        let pub_key_2 = public_key_create(&priv_key_2).unwrap();
+
+        let raw_1 = shared_secret_raw(&priv_key_1, &pub_key_2).unwrap();
+        let raw_2 = shared_secret_raw(&priv_key_2, &pub_key_1).unwrap();
+
+        assert_eq!(raw_1, raw_2);
+        assert_eq!(raw_1.len(), 32);
+    }
+
+    #[test]
+    fn test_shared_secret_raw_bad_inputs() {
+        let short_priv = [0u8; 16];
+        let ok_pub = [0u8; 33];
+        assert!(shared_secret_raw(&short_priv, &ok_pub)
+            .unwrap_err()
+            .contains("Private key"));
+
+        let ok_priv = [1u8; 32];
+        let short_pub = [0u8; 30];
+        assert!(shared_secret_raw(&ok_priv, &short_pub)
+            .unwrap_err()
+            .contains("Public key"));
     }
 
     // P-256 curve order (modulus)

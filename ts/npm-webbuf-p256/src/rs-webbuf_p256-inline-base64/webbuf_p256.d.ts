@@ -17,6 +17,16 @@ export function public_key_verify(pub_key_buf: Uint8Array): boolean;
 
 export function shared_secret(priv_key_buf: Uint8Array, pub_key_buf: Uint8Array): Uint8Array;
 
+/**
+ * Diffie-Hellman shared secret, returned as the raw 32-byte X-coordinate.
+ *
+ * This is the SEC1 X9.63 "Z" value used as input to a KDF in NIST SP
+ * 800-56A §5.7.1.2 and the IETF hybrid KEM combiners. Equivalent to
+ * `shared_secret` with the SEC1 prefix byte stripped — the prefix is
+ * deterministic given the X-coordinate, so removing it loses no entropy.
+ */
+export function shared_secret_raw(priv_key_buf: Uint8Array, pub_key_buf: Uint8Array): Uint8Array;
+
 export function sign(hash_buf: Uint8Array, priv_key_buf: Uint8Array, k_buf: Uint8Array): Uint8Array;
 
 export function verify(sig_buf: Uint8Array, hash_buf: Uint8Array, pub_key_buf: Uint8Array): void;

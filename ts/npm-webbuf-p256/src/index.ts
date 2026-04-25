@@ -2,6 +2,7 @@ import {
   sign as raw_sign,
   verify as raw_verify,
   shared_secret,
+  shared_secret_raw,
   public_key_add,
   public_key_create,
   public_key_verify,
@@ -81,6 +82,26 @@ export function p256SharedSecret(
   return FixedBuf.fromBuf(
     33,
     WebBuf.fromUint8Array(shared_secret(privateKey.buf, publicKey.buf)),
+  );
+}
+
+/**
+ * P-256 ECDH shared secret as the raw 32-byte X-coordinate.
+ *
+ * This is the SEC1 X9.63 "Z" value used as input to a KDF in NIST SP
+ * 800-56A §5.7.1.2 and the IETF hybrid KEM combiners. Equivalent to
+ * `p256SharedSecret` with the SEC1 prefix byte stripped — the prefix
+ * is deterministic given the X-coordinate, so removing it loses no
+ * entropy. Use this when feeding the ECDH output into an HKDF-based
+ * key schedule.
+ */
+export function p256SharedSecretRaw(
+  privateKey: FixedBuf<32>,
+  publicKey: FixedBuf<33>,
+): FixedBuf<32> {
+  return FixedBuf.fromBuf(
+    32,
+    WebBuf.fromUint8Array(shared_secret_raw(privateKey.buf, publicKey.buf)),
   );
 }
 
