@@ -482,3 +482,140 @@ ML-KEM-1024's larger keys round-trip through WASM cleanly.
 Next experiment: scaffold `@webbuf/mldsa` (ML-DSA / FIPS 204) using the same
 template, with `ml-dsa = ">=0.1.0-rc.8"` pinned per Experiment 2's findings, and
 validate against NIST ACVP ML-DSA test vectors.
+
+## Experiment 4: Scaffold `@webbuf/mldsa` and verify against NIST vectors
+
+### Goal
+
+Same shape as Experiment 3, applied to ML-DSA / FIPS 204:
+
+1. `rs/webbuf_mldsa` Rust crate compiles cleanly to `wasm32-unknown-unknown`.
+2. `ts/npm-webbuf-mldsa` TypeScript wrapper builds via the existing Rust → WASM
+   → base64-inline → TS pipeline.
+3. The wrapper produces output matching official NIST ACVP test vectors for all
+   three FIPS 204 parameter sets (ML-DSA-44, ML-DSA-65, ML-DSA-87) across
+   keyGen, sigGen, and sigVer.
+
+### API surface to expose
+
+ML-DSA has more public API than ML-KEM. From FIPS 204 plus the `ml-dsa` crate's
+exposure:
+
+- **KeyGen**: 32-byte seed `xi` → public key (vk) + secret key (sk, expanded
+  form per FIPS 204 §6.4.2). The seed-form is 32 bytes; the expanded sk is much
+  larger (2560/4032/4896 bytes for the three parameter sets).
+- **Sign internal** (FIPS 204 §6.2 ML-DSA.Sign_internal): expanded sk +
+  message + 32-byte randomness `rnd` → signature. This is the primitive signing
+  function that NIST ACVP `internal` vectors test against.
+- **Verify internal** (FIPS 204 §6.3 ML-DSA.Verify_internal): vk + message +
+  signature → bool.
+
+The crate also exposes `sign_deterministic`, `sign_randomized`,
+`sign_with_context`, `verify_with_context`, mu-mode signing, etc. Out of scope
+for this experiment — we'll add them only if a downstream consumer needs them.
+
+### Pinning the crate
+
+Per Experiment 2's findings, pin `ml-dsa = "=0.1.0-rc.8"`. The recent advisory
+cluster (Dec 2025 – Mar 2026: timing leak, signature malleability, RNG-failure
+key gen, hint-decode panic, response-norm verify) was all fixed by rc.8. Pin
+exactly so a `cargo update` doesn't pull a future rc that has breaking API
+changes — the crate is still moving fast through release candidates.
+
+### Plan
+
+1. Look at the `ml-dsa` 0.1.0-rc.8 source for sign_internal / verify_internal /
+   from_seed signatures.
+2. Write `rs/webbuf_mldsa/Cargo.toml` (default-features = false to skip
+   `rand_core` and `pkcs8`; we don't need them) and `src/lib.rs` with a macro
+   emitting nine functions: `ml_dsa_{44,65,87}_keypair`,
+   `ml_dsa_{44,65,87}_sign_internal`, `ml_dsa_{44,65,87}_verify_internal`.
+3. Round-trip Rust tests for all three parameter sets.
+4. Build WASM via `wasm-pack-bundler.zsh`. Expect a larger WASM than ML-KEM
+   since the lattice signature scheme has more code paths.
+5. Scaffold `ts/npm-webbuf-mldsa/` mirroring `ts/npm-webbuf-mlkem/`.
+6. Vendor NIST ACVP-Server FIPS 204 vectors (keyGen, sigGen, sigVer
+   `internalProjection.json` files).
+7. Write a vitest audit suite that iterates all three test types across all
+   three parameter sets.
+8. Run; record results, WASM size, gotchas.
+
+### Implementation
+
+Built `rs/webbuf_mldsa` (~85 lines of Rust + ~95 lines of round-trip tests) and
+`ts/npm-webbuf-mldsa` (~120 lines of TypeScript). The same `mldsa_impl!` macro
+pattern from `webbuf_mlkem` emits keypair/sign/verify functions per parameter
+set. Wrapper TypeScript exports per-parameter-set typed functions:
+`mlDsa{44,65,87}KeyPair`, `mlDsa{44,65,87}SignInternal`,
+`mlDsa{44,65,87}VerifyInternal`.
+
+Pipeline gotchas discovered:
+
+- **`ml-dsa` API is bigger and trickier than `ml-kem`.** Three traits (`KeyGen`,
+  `signature::Keypair`, plus the inherent methods) plus two key types
+  (`SigningKey` and `ExpandedSigningKey`) overlap with subtle differences. The
+  right pattern is: call `KeyGen::from_seed` to get a `SigningKey`, then
+  `.signing_key()` to get the embedded `ExpandedSigningKey`, which is what owns
+  `sign_internal` and `verifying_key`.
+- **`ExpandedSigningKey::to_expanded` and `from_expanded` are deprecated.** But
+  they're the FIPS 204 sk encoding that NIST ACVP test vectors compare against.
+  The deprecation recommends `to_seed` / `from_seed` (32-byte form) but that
+  doesn't match ACVP's expected output. Used `#[allow(deprecated)]` with a note.
+  If ml-dsa removes these in the future we'll need to roll our own FIPS 204
+  §6.4.2 encoding/decoding.
+- **`sign_internal` takes `&[&[u8]]` (multipart).** Pass `&[message]` for the
+  single-message case.
+- **Signature is parsed via `Signature::decode(&EncodedSignature)`** which
+  returns `Option<Self>` — invalid signatures get caught here before reaching
+  `verify_internal`.
+
+The ACVP sigGen tests have `deterministic: bool` per group. When `true`, FIPS
+204 §5.2 specifies `rnd = 0^32`, so the test cases omit the `rnd` field. The
+audit suite supplies a constant zero `rnd` for these cases.
+
+### Result: Pass
+
+**Rust:** 6/6 unit tests pass (round-trip across all three parameter sets,
+deterministic signing reproducibility, tampered-signature rejection, input
+validation). `cargo check` and `wasm-pack build --target bundler` both clean.
+
+**WASM size:** 189KB raw, 252KB after base64 inlining. About 2.1× the size of
+`@webbuf/mlkem`, which is expected — ML-DSA is a significantly more complex
+algorithm with more code paths (signing rejection sampling, hint
+encoding/decoding, etc.). Still well within budget for synchronous-load
+TypeScript packages.
+
+**TypeScript:** typecheck passes, `pnpm run build` produces a clean `dist/`, and
+the test suite reports:
+
+```
+✓ test/index.test.ts (6 tests) 19ms
+✓ test/audit.test.ts (180 tests) 127ms
+
+Test Files  2 passed (2)
+     Tests  186 passed (186)
+```
+
+The 180 audit tests exercise the official NIST ACVP-Server FIPS 204 vectors
+(commit `65370b8`):
+
+- **keyGen**: 25 tests × 3 parameter sets = 75 tests. All pk and sk match.
+- **sigGen**: 10 tests × 2 variants (deterministic and hedged) × 3 parameter
+  sets = 60 tests. All signatures match exactly.
+- **sigVer**: 15 tests × 3 parameter sets = 45 tests. All `testPassed`
+  expectations match — both valid signatures verify and tampered/invalid ones
+  reject.
+
+**All 180 NIST vectors match exactly.** Total runtime 127ms (slower than
+ML-KEM's 25ms because signing involves rejection sampling, but still fast).
+
+The pipeline holds up for ML-DSA. Pinning `=0.1.0-rc.8` is currently working;
+we'll need to bump as new rc releases land. The deprecated
+`to_expanded`/`from_expanded` is a sword of Damocles — if it's removed in 0.1.0
+final, we'll need to either implement FIPS 204 sk encoding ourselves or switch
+to the seed-form sk and have downstream consumers re-derive expanded form on
+demand.
+
+Next experiment: scaffold `@webbuf/slhdsa` (SLH-DSA / FIPS 205) using the same
+template. SLH-DSA has 12 parameter sets (small/fast × SHA2/SHAKE × 4 security
+levels) — needs design thought on which to expose.

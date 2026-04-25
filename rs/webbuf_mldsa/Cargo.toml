@@ -1,0 +1,24 @@
+[package]
+name = "webbuf_mldsa"
+description = "ML-DSA (FIPS 204) post-quantum digital signatures for WebBuf with optional WASM support."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+ml-dsa = { version = "=0.1.0-rc.8", default-features = false }
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+optional = true
+
+[dev-dependencies]
+hex = "0.4"

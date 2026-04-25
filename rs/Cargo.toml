@@ -4,6 +4,7 @@ members = [
     "webbuf_aescbc",
     "webbuf_aesgcm",
     "webbuf_blake3",
+    "webbuf_mldsa",
     "webbuf_mlkem",
     "webbuf_p256",
     "webbuf_pbkdf2_sha256",
@@ -21,6 +22,7 @@ webbuf = { path = "./webbuf" }
 webbuf_aescbc = { path = "./webbuf_aescbc" }
 webbuf_aesgcm = { path = "./webbuf_aesgcm" }
 webbuf_blake3 = { path = "./webbuf_blake3" }
+webbuf_mldsa = { path = "./webbuf_mldsa" }
 webbuf_mlkem = { path = "./webbuf_mlkem" }
 webbuf_p256 = { path = "./webbuf_p256" }
 webbuf_pbkdf2_sha256 = { path = "./webbuf_pbkdf2_sha256" }
