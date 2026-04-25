@@ -11,6 +11,7 @@ export * from "@webbuf/aescbc";
 export * from "@webbuf/aesgcm";
 export * from "@webbuf/aesgcm-mlkem";
 export * from "@webbuf/aesgcm-p256dh";
+export * from "@webbuf/aesgcm-p256dh-mlkem";
 export * from "@webbuf/acb3";
 export * from "@webbuf/acb3dh";
 export * from "@webbuf/acb3p256dh";

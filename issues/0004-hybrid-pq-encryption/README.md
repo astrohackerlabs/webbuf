@@ -1,6 +1,7 @@
 +++
-status = "open"
+status = "closed"
 opened = "2026-04-25"
+closed = "2026-04-25"
 +++
 
 # Hybrid post-quantum encryption packages
@@ -411,10 +412,10 @@ default. Fixed across all WebBuf hybrid-PQ packages.
 | `@webbuf/aesgcm-mlkem`        | `webbuf:aesgcm-mlkem v1`        |
 | `@webbuf/aesgcm-p256dh-mlkem` | `webbuf:aesgcm-p256dh-mlkem v1` |
 
-The trailing ` v1` lets us version the schedule independently of the package
-version. If we ever revise the KDF, info string, or wire format, we bump to
-` v2` and the version byte changes — old ciphertexts decrypt under the old
-scheme, new ones under the new.
+The trailing `v1` lets us version the schedule independently of the package
+version. If we ever revise the KDF, info string, or wire format, we bump to `v2`
+and the version byte changes — old ciphertexts decrypt under the old scheme, new
+ones under the new.
 
 #### IKM concatenation order
 
@@ -1024,8 +1025,268 @@ The pure-PQ encryption package is shippable. The next experiment builds
 (classical X-coord || KEM shared secret) and a different version byte (`0x02`)
 and info string (`webbuf:aesgcm-p256dh-mlkem v1`).
 
-## Plan
+## Experiment 3: Implement `@webbuf/aesgcm-p256dh-mlkem`
 
-Pin the key schedule and wire format first (Experiment 1, above), then build the
-packages incrementally. Each experiment is designed, implemented, and concluded
-before the next one is designed; outcomes inform what comes next.
+### Goal
+
+Build the hybrid classical+PQC encryption package per Experiment 1's spec,
+combining P-256 ECDH and ML-KEM-768 shared secrets into a single AES key via
+HKDF-SHA-256. The hybrid scheme is the recommended migration path: an attacker
+must break **both** P-256 and ML-KEM to recover the AES key, so the package is
+secure against both classical adversaries (today's threat) and quantum
+adversaries (the harvest-now-decrypt-later threat).
+
+### Why this experiment is mostly mechanical
+
+Experiment 2 validated the scaffold pattern, the HKDF helper, the wire format,
+and the test infrastructure. Experiment 1 captured a byte-precise KAT
+(`SHA-256(ciphertext) = c689ccce...a02b6d`) that the implementation must
+reproduce. The deltas from Experiment 2 are small and well-defined:
+
+| Aspect           | aesgcm-mlkem (Exp 2)       | aesgcm-p256dh-mlkem (Exp 3)                        |
+| ---------------- | -------------------------- | -------------------------------------------------- |
+| Version byte     | `0x01`                     | `0x02`                                             |
+| HKDF info string | `"webbuf:aesgcm-mlkem v1"` | `"webbuf:aesgcm-p256dh-mlkem v1"`                  |
+| IKM              | `kemSharedSecret` (32B)    | `ecdhRawX \|\| kemSharedSecret` (64B)              |
+| Encrypt arity    | `(encapKey, plaintext)`    | `(senderPriv, recipientPub, encapKey, plaintext)`  |
+| Decrypt arity    | `(decapKey, ciphertext)`   | `(recipientPriv, senderPub, decapKey, ciphertext)` |
+| Wire format      | identical layout           | identical layout, different version byte           |
+| KAT to assert    | `680beaa6...8ef240`        | `c689ccce...a02b6d`                                |
+
+Everything else — package layout, HKDF helper, AES-GCM composition, test
+structure — copies directly from Experiment 2.
+
+### Plan
+
+#### Package scaffold
+
+Create `ts/npm-webbuf-aesgcm-p256dh-mlkem/` mirroring
+`ts/npm-webbuf-aesgcm-mlkem/`. One additional peer dep: `@webbuf/p256`
+(workspace).
+
+#### Constants and helpers
+
+```typescript
+const VERSION = 0x02;
+const KEM_CT_SIZE = ML_KEM_768.ciphertextSize; // 1088
+const IV_SIZE = 12;
+const TAG_SIZE = 16;
+const FIXED_OVERHEAD = 1 + KEM_CT_SIZE + IV_SIZE + TAG_SIZE; // 1117
+
+const ZERO_SALT = FixedBuf.alloc(32);
+const INFO = WebBuf.fromUtf8("webbuf:aesgcm-p256dh-mlkem v1");
+```
+
+The `hkdfSha256L32` helper is identical to Experiment 2's. Future refactor
+opportunity: extract to a shared internal module. For now duplicate the 6 lines
+— composition over premature abstraction.
+
+#### Public API
+
+```typescript
+export function aesgcmP256dhMlkemEncrypt(
+  senderPrivKey: FixedBuf<32>,
+  recipientPubKey: FixedBuf<33>,
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+): WebBuf;
+
+export function aesgcmP256dhMlkemDecrypt(
+  recipientPrivKey: FixedBuf<32>,
+  senderPubKey: FixedBuf<33>,
+  decapKey: FixedBuf<2400>,
+  ciphertext: WebBuf,
+): WebBuf;
+```
+
+Encrypt body (~18 lines):
+
+1. `ecdhRaw = p256SharedSecretRaw(senderPrivKey, recipientPubKey)` — 32 bytes.
+2. `{ ciphertext: kemCt, sharedSecret: kemSS } = mlKem768Encapsulate(recipientEncapKey)`.
+3. `ikm = WebBuf.concat([ecdhRaw.buf, kemSS.buf])` — 64 bytes.
+4. `aesKey = hkdfSha256L32(ZERO_SALT, ikm, INFO)`.
+5. `aesPart = aesgcmEncrypt(plaintext, aesKey)` — random IV prepended
+   internally.
+6. Return `WebBuf.concat([WebBuf.fromArray([VERSION]), kemCt.buf, aesPart])`.
+
+Decrypt body (~22 lines):
+
+1. Validate length and version byte (`0x02`).
+2. Slice out `kemCt`, then `aesPart`.
+3. `ecdhRaw = p256SharedSecretRaw(recipientPrivKey, senderPubKey)`.
+4. `kemSS = mlKem768Decapsulate(decapKey, kemCt)`.
+5. `ikm = WebBuf.concat([ecdhRaw.buf, kemSS.buf])`.
+6. `aesKey = hkdfSha256L32(ZERO_SALT, ikm, INFO)`.
+7. `aesgcmDecrypt(aesPart, aesKey)`.
+
+Test-only
+`_aesgcmP256dhMlkemEncryptDeterministic(senderPriv, recipientPub, encapKey, plaintext, m, iv)`
+for the KAT regression.
+
+### Tests
+
+#### Unit tests (`test/index.test.ts`)
+
+1. Round-trip with random plaintext (small, empty, 64 KiB).
+2. Default encryption is non-deterministic.
+3. Ciphertext length equals `1117 + plaintext.length`.
+4. Version byte is `0x02`.
+5. **Wrong recipient ML-KEM key** (different decapKey) fails.
+6. **Wrong recipient P-256 key** (decrypter uses wrong privKey) fails.
+7. **Wrong sender P-256 key** (decrypter uses wrong senderPub) fails.
+8. Tampered KEM ciphertext rejected.
+9. Tampered AES ciphertext rejected.
+10. Tampered IV rejected.
+11. Wrong version byte (`0x01` from a sibling-package ciphertext) rejected.
+12. Truncated ciphertext rejected.
+
+#### Hybrid defense-in-depth test
+
+13. **Both shared secrets are load-bearing.** Encrypt with the correct inputs.
+    Then attempt to decrypt with a derivative-but-wrong setup: keep the KEM
+    keypair right but swap to a different sender P-256 keypair. Confirm the
+    decrypt fails. This proves the ECDH contribution actually feeds into the key
+    — if the implementation accidentally only used `kemSS` as IKM (forgetting
+    the ECDH part), this test would still succeed and we'd have shipped a
+    non-hybrid masquerading as a hybrid. The test catches that bug class.
+
+#### KAT regression (`test/audit.test.ts`)
+
+14. Reproduce Experiment 1's hybrid KAT inputs:
+    - sender P-256 priv = `0x44 * 32`
+    - recipient P-256 priv = `0x55 * 32` (recipient pub derived)
+    - ML-KEM seeds d/z = `0x66 * 32` / `0x77 * 32`
+    - ML-KEM m = `0x88 * 32`
+    - AES IV = `0x99 * 12`
+    - plaintext = `"hybrid"`
+
+    Encrypt via `_aesgcmP256dhMlkemEncryptDeterministic`. Assert
+    `sha256Hash(ciphertext).toHex() === "c689ccce3ad0194c00377441af4f89c4d8aa48f530b451216e7b26f566a02b6d"`
+    and `ciphertext.length === 1123`.
+
+### Wire into umbrella
+
+Add `@webbuf/aesgcm-p256dh-mlkem` to `ts/npm-webbuf/package.json` peer deps and
+`export *` from `ts/npm-webbuf/src/index.ts`.
+
+### Success criteria
+
+- `pnpm test` passes all 14 tests in `ts/npm-webbuf-aesgcm-p256dh-mlkem`.
+- KAT SHA-256 matches `c689ccce...a02b6d` byte-for-byte.
+- `pnpm run typecheck` and `pnpm run build` clean in the new package.
+- Umbrella `pnpm run typecheck` and `pnpm run build:typescript` clean.
+
+After this experiment passes, issue 0004 is complete and can be closed with a
+top-level Conclusion summarizing the two new packages, the spec they implement,
+and the captured test vectors.
+
+### Implementation
+
+Built `ts/npm-webbuf-aesgcm-p256dh-mlkem/` mirroring the `@webbuf/aesgcm-mlkem`
+scaffold from Experiment 2, with one additional peer dep on `@webbuf/p256` and
+the hybrid IKM logic. About 130 lines of TypeScript total.
+
+The encrypt path computes the raw 32-byte ECDH X-coordinate via
+`p256SharedSecretRaw` (the helper landed in Experiment 1's prerequisite work),
+encapsulates a fresh ML-KEM-768 shared secret, concatenates the two as IKM
+(`ecdhRaw || kemSS`, 64 bytes total), derives the AES-256 key via the same
+HKDF-SHA-256 helper used in Experiment 2 — but with the hybrid info string
+`webbuf:aesgcm-p256dh-mlkem v1` — and encrypts with AES-GCM. The wire format
+uses version byte `0x02` so a stray `@webbuf/aesgcm-mlkem` ciphertext (which
+uses `0x01`) is rejected clearly rather than silently failing AES-GCM
+authentication.
+
+The HKDF helper is duplicated from `@webbuf/aesgcm-mlkem` (6 lines — not worth a
+shared package yet; revisit if a third consumer appears).
+
+### Result: Pass
+
+**Tests:** 19/19 pass on the first run.
+
+```
+✓ test/audit.test.ts (3 tests) — KAT regression matches
+✓ test/index.test.ts (16 tests) — round-trip, rejection, hybrid defense
+```
+
+The 16 unit tests cover round-trip across plaintext sizes (small, empty, 64
+KiB), wire-format invariants (length, version byte), non-determinism, and seven
+rejection paths: wrong recipient ML-KEM key, wrong recipient P-256 priv, wrong
+sender P-256 pub, tampered KEM ciphertext, tampered AES ciphertext, tampered IV,
+wrong version byte, truncation. Plus two **hybrid defense-in-depth tests** that
+explicitly verify both shared secrets are load-bearing — one breaks only the
+ML-KEM contribution and confirms decryption fails, the other breaks only the
+P-256 contribution and confirms decryption fails. If the implementation
+accidentally fed only one secret as IKM, one of these tests would catch it.
+
+The 3 audit tests reproduce Experiment 1's deterministic hybrid KAT inputs
+(`senderPriv = 0x44 * 32`, `recipientPriv = 0x55 * 32`, ML-KEM seeds `0x66 * 32`
+/ `0x77 * 32`, encap rand `0x88 * 32`, IV `0x99 * 12`, plaintext `"hybrid"`) and
+assert
+`sha256Hash(ciphertext).toHex() === "c689ccce3ad0194c00377441af4f89c4d8aa48f530b451216e7b26f566a02b6d"`
+— matched on the first run, byte-for-byte. The recipient public key derivation
+also matches the captured value
+(`0257e977f6db7e33c3fe7acf2842ed987009caf56d458682fca447b7d3d762ab34`), and the
+wire-format prefix bytes (KEM ct prefix, IV at offset 1089) match the captured
+ciphertext.
+
+**Build:**
+
+- `pnpm run typecheck` clean.
+- `pnpm run build` produces a clean `dist/`.
+- Umbrella `pnpm run typecheck` and `pnpm run build:typescript` clean.
+
+Both PQC encryption packages are now shippable.
+
+## Conclusion
+
+Issue 4 is complete. WebBuf now exposes high-level post-quantum authenticated
+encryption packages alongside the classical `@webbuf/aesgcm-p256dh`:
+
+- **`@webbuf/aesgcm-mlkem`** — pure post-quantum encryption with ML-KEM-768 +
+  AES-256-GCM, version byte `0x01`.
+- **`@webbuf/aesgcm-p256dh-mlkem`** — hybrid classical + post-quantum encryption
+  combining P-256 ECDH with ML-KEM-768, version byte `0x02`. Recommended for
+  transitional deployments.
+
+Both packages share a single design pinned in Experiment 1:
+
+- HKDF-SHA-256 (RFC 5869, NIST SP 800-56C Rev. 2) for key derivation, with a
+  32-byte zero salt and a per-package info string carrying domain separation and
+  a `v1` version suffix.
+- AES-256-GCM with random 12-byte IV per encryption — the AES key is fresh per
+  message because the underlying KEM shared secret is.
+- Wire format: version byte || ML-KEM-768 ciphertext (1088) || IV (12) ||
+  AES-GCM ciphertext + tag, with 1117 bytes of fixed overhead per message.
+
+The hybrid package's IKM concatenates the raw 32-byte P-256 ECDH X-coordinate
+with the 32-byte ML-KEM shared secret in classical-first order, matching the
+conventions of `draft-ietf-tls-hybrid-design-16` and Signal PQXDH. An attacker
+must break both P-256 and ML-KEM to recover the AES key, providing defense in
+depth during the post-quantum transition.
+
+Both KATs are embedded byte-for-byte in this issue — full ciphertext hex,
+intermediate values, and SHA-256 assertion targets — so an independent
+implementation can verify spec conformance from the issue alone. The capture
+script lives at `ts/npm-webbuf/scripts/capture-issue-0004-kats.ts` for
+re-derivation.
+
+A new helper `p256SharedSecretRaw` was added to `@webbuf/p256` along the way,
+exposing the bare ECDH X-coordinate (the SEC1 X9.63 Z value) for
+standards-compliant KDF input. It's the recommended ECDH-output helper for any
+future package building on top of `@webbuf/p256` that feeds into HKDF.
+
+The umbrella `webbuf` package re-exports both new packages, so
+`import { aesgcmMlkemEncrypt, aesgcmP256dhMlkemEncrypt } from "webbuf"` works.
+
+WebBuf's post-quantum suite is now complete:
+
+| Package                       | Algorithm                     | Type                 |
+| ----------------------------- | ----------------------------- | -------------------- |
+| `@webbuf/mlkem`               | ML-KEM (FIPS 203)             | KEM primitive        |
+| `@webbuf/mldsa`               | ML-DSA (FIPS 204)             | Signature primitive  |
+| `@webbuf/slhdsa`              | SLH-DSA (FIPS 205)            | Hash-based signature |
+| `@webbuf/aesgcm-mlkem`        | AES-GCM + ML-KEM              | Pure-PQ encryption   |
+| `@webbuf/aesgcm-p256dh-mlkem` | AES-GCM + P-256 ECDH + ML-KEM | Hybrid encryption    |
+
+Downstream consumers like KeyPears now have a complete post-quantum-ready
+encryption story available as TypeScript primitives.
