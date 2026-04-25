@@ -418,17 +418,12 @@ import {
   ML_KEM_768,
 } from "@webbuf/mlkem";
 
-// Caller supplies entropy as 32-byte seeds (FIPS 203 deterministic API).
-const d = FixedBuf.fromRandom<32>(32);
-const z = FixedBuf.fromRandom<32>(32);
-const m = FixedBuf.fromRandom<32>(32);
-
 // Generate keypair
-const { encapsulationKey, decapsulationKey } = mlKem768KeyPair(d, z);
+const { encapsulationKey, decapsulationKey } = mlKem768KeyPair();
 // encapsulationKey: FixedBuf<1184>, decapsulationKey: FixedBuf<2400>
 
 // Encapsulate (sender side)
-const { ciphertext, sharedSecret } = mlKem768Encapsulate(encapsulationKey, m);
+const { ciphertext, sharedSecret } = mlKem768Encapsulate(encapsulationKey);
 // ciphertext: FixedBuf<1088>, sharedSecret: FixedBuf<32>
 
 // Decapsulate (recipient side) — recovers the same shared secret
@@ -438,6 +433,8 @@ const recovered = mlKem768Decapsulate(decapsulationKey, ciphertext);
 
 ML-KEM-512 and ML-KEM-1024 follow the same shape with `mlKem512*` / `mlKem1024*`
 and the corresponding `ML_KEM_512` / `ML_KEM_1024` size constants.
+Use `mlKem*KeyPairDeterministic` and `mlKem*EncapsulateDeterministic` when you
+need reproducible FIPS 203 / ACVP vector behavior with caller-supplied seeds.
 
 ### ML-DSA (@webbuf/mldsa)
 
@@ -448,29 +445,30 @@ ML-DSA-44, ML-DSA-65, ML-DSA-87.
 ```typescript
 import {
   mlDsa65KeyPair,
-  mlDsa65SignInternal,
-  mlDsa65VerifyInternal,
+  mlDsa65Sign,
+  mlDsa65Verify,
   ML_DSA_65,
 } from "@webbuf/mldsa";
 
-const seed = FixedBuf.fromRandom<32>(32);
-const rnd = FixedBuf.fromRandom<32>(32); // FIPS 204 hedged-mode randomness
 const message = WebBuf.fromUtf8("authenticated message");
+const context = WebBuf.fromUtf8("example domain");
 
 // KeyGen
-const { verifyingKey, signingKey } = mlDsa65KeyPair(seed);
+const { verifyingKey, signingKey } = mlDsa65KeyPair();
 // verifyingKey: FixedBuf<1952>, signingKey: FixedBuf<4032>
 
-// Sign (FIPS 204 internal API — caller-supplied randomness)
-const signature = mlDsa65SignInternal(signingKey, message, rnd);
+// Sign (hedged by default using platform CSPRNG randomness)
+const signature = mlDsa65Sign(signingKey, message, context);
 // signature: FixedBuf<3309>
 
 // Verify
-mlDsa65VerifyInternal(verifyingKey, message, signature); // true
+mlDsa65Verify(verifyingKey, message, signature, context); // true
 ```
 
-For deterministic signing per FIPS 204 §5.2, pass `rnd` as 32 zero bytes.
 ML-DSA-44 and ML-DSA-87 use the same API shape with `mlDsa44*` / `mlDsa87*`.
+Use `mlDsa*SignDeterministic` for reproducible message-level signatures and
+`mlDsa*SignInternal` / `mlDsa*VerifyInternal` only for ACVP vectors or low-level
+FIPS 204 conformance work.
 
 ### SLH-DSA (@webbuf/slhdsa)
 
@@ -483,34 +481,29 @@ larger signature).
 ```typescript
 import {
   slhDsaSha2_128fKeyPair,
-  slhDsaSha2_128fSignInternal,
-  slhDsaSha2_128fVerifyInternal,
+  slhDsaSha2_128fSign,
+  slhDsaSha2_128fVerify,
   SLH_DSA_SHA2_128F,
 } from "@webbuf/slhdsa";
 
-// FIPS 205 keygen takes three n-byte seeds (16 bytes for 128-bit, 24 for
-// 192-bit, 32 for 256-bit security)
-const skSeed = FixedBuf.fromRandom<16>(16);
-const skPrf = FixedBuf.fromRandom<16>(16);
-const pkSeed = FixedBuf.fromRandom<16>(16);
 const message = WebBuf.fromUtf8("hash-based signature");
+const context = WebBuf.fromUtf8("example domain");
 
-const { verifyingKey, signingKey } = slhDsaSha2_128fKeyPair(
-  skSeed,
-  skPrf,
-  pkSeed,
-);
+const { verifyingKey, signingKey } = slhDsaSha2_128fKeyPair();
 // verifyingKey: FixedBuf<32>, signingKey: FixedBuf<64>
 
-// Sign (deterministic mode — omit addrnd to use pkSeed as randomizer)
-const signature = slhDsaSha2_128fSignInternal(signingKey, message);
+// Sign (hedged by default using platform CSPRNG randomness)
+const signature = slhDsaSha2_128fSign(signingKey, message, context);
 // signature: FixedBuf<17088>
 
-slhDsaSha2_128fVerifyInternal(verifyingKey, message, signature); // true
+slhDsaSha2_128fVerify(verifyingKey, message, signature, context); // true
 ```
 
 The other 11 parameter sets follow the same `slhDsa{Sha2,Shake}_{NNN}{s,f}*`
 naming with corresponding size constants (`SLH_DSA_{SHA2,SHAKE}_{NNN}{S,F}`).
+Use `slhDsa*SignDeterministic` for reproducible message-level signatures and
+`slhDsa*SignInternal` / `slhDsa*VerifyInternal` only for ACVP vectors or
+low-level FIPS 205 conformance work.
 
 **Tradeoffs at a glance:**
 
