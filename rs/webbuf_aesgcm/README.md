@@ -19,13 +19,14 @@ use webbuf_aesgcm::aesgcm::{aesgcm_encrypt, aesgcm_decrypt};
 let key = [0x01u8; 32]; // 16 or 32 bytes (AES-128 or AES-256)
 let iv = [0x02u8; 12];  // 12 bytes (GCM standard nonce)
 let plaintext = b"Hello, AES-GCM!";
+let aad: &[u8] = &[]; // empty AAD == no AAD; pass non-empty bytes to bind context
 
 // Encrypt: returns ciphertext + 16-byte auth tag
-let ciphertext = aesgcm_encrypt(plaintext, &key, &iv).unwrap();
+let ciphertext = aesgcm_encrypt(plaintext, &key, &iv, aad).unwrap();
 assert_eq!(ciphertext.len(), plaintext.len() + 16);
 
 // Decrypt: verifies auth tag and returns plaintext
-let decrypted = aesgcm_decrypt(&ciphertext, &key, &iv).unwrap();
+let decrypted = aesgcm_decrypt(&ciphertext, &key, &iv, aad).unwrap();
 assert_eq!(decrypted, plaintext);
 ```
 
@@ -33,12 +34,14 @@ assert_eq!(decrypted, plaintext);
 
 | Function | Description |
 |----------|-------------|
-| `aesgcm_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, String>` | Encrypt and authenticate |
-| `aesgcm_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8]) -> Result<Vec<u8>, String>` | Decrypt and verify auth tag |
+| `aesgcm_encrypt(plaintext: &[u8], key: &[u8], iv: &[u8], aad: &[u8]) -> Result<Vec<u8>, String>` | Encrypt and authenticate |
+| `aesgcm_decrypt(ciphertext: &[u8], key: &[u8], iv: &[u8], aad: &[u8]) -> Result<Vec<u8>, String>` | Decrypt and verify auth tag |
 
 **Parameters:**
 - `key` - 16 bytes (AES-128) or 32 bytes (AES-256)
 - `iv` - 12 bytes (GCM nonce)
+- `aad` - Additional Authenticated Data; empty slice for no AAD. Authenticated
+  by the GCM tag but not transmitted — recipient must supply the same bytes.
 - Output: `ciphertext || 16-byte tag` (tag appended)
 
 ## WebAssembly

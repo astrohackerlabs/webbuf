@@ -4,3 +4,4 @@ wasm-pack build --target bundler --out-dir build/bundler --release -- --features
 rm build/bundler/.gitignore
 rm build/bundler/LICENSE
 rm build/bundler/package.json
+rm build/bundler/README.md

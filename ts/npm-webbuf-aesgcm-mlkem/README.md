@@ -170,8 +170,8 @@ The change was landed in
 documents the captured non-empty-AAD KAT
 (`SHA-256(ciphertext) === f05197b5...5bafc2ab`) asserted in
 `test/audit.test.ts`. See
-[issue 0005](../../issues/0005-pq-package-followups/README.md) for the original
-Scope-section gap that motivated this.
+[issue 0005](../../issues/0005-pin-mlkem-and-scope-docs/README.md) for the
+original Scope-section gap that motivated this.
 
 ## Tests
 
