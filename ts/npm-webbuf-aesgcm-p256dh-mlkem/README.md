@@ -123,6 +123,69 @@ lets us version the schedule independently of the package version.
 
 In all rejection cases, `aesgcmP256dhMlkemDecrypt` throws.
 
+## Scope
+
+This package authenticates a ciphertext under both the sender↔recipient P-256
+ECDH static-static pair and the recipient's ML-KEM-768 keypair, using
+AES-256-GCM. The AES key is derived from the concatenation of both shared
+secrets via HKDF-SHA-256 — an attacker must break **both** P-256 and ML-KEM to
+recover it. But the package does not bind any external context beyond the keys
+themselves.
+
+**What this package binds (AES-GCM tag fails on mismatch):**
+
+- The sender's and recipient's P-256 keypairs (any wrong key on either side →
+  wrong ECDH X-coordinate → wrong AES key → AES-GCM tag fails). Hybrid
+  defense-in-depth tests confirm the ECDH contribution is load-bearing.
+- The recipient's ML-KEM encapsulation / decapsulation keys (per FIPS 203
+  implicit rejection, same chain). Hybrid defense-in-depth tests confirm the
+  ML-KEM contribution is also load-bearing.
+- The KEM ciphertext bytes.
+- The AES-GCM IV and ciphertext bytes.
+- The wire-format version byte `0x02` (a `0x01` ciphertext from the pure-PQ
+  `@webbuf/aesgcm-mlkem` package is rejected up front).
+
+**What this package does not bind:**
+
+- The mapping between a sender's P-256 keypair and their federation identity /
+  address. A keypair could serve multiple addresses, and the package has no way
+  to verify which address the sender claims.
+- Recipient's federation identity / address (only the keypair).
+- Application protocol version (beyond the wire-format byte).
+- Message type — text vs. signed challenge vs. control vs. vault entry all share
+  the same key schedule.
+- Any transcript, message-ID, or sequence number.
+
+**If you need those bindings:**
+
+- **Today (works, ugly):** prepend your context bytes to the plaintext before
+  encryption and parse them off after decryption. The cost is that the
+  encrypted-vs-authenticated line gets blurry and every consumer reinvents the
+  same framing.
+- **Soon (clean):** use the optional `aad` (Additional Authenticated Data)
+  parameter being added in
+  [issue 0006](../../issues/0006-aad-pq-encryption/README.md). AAD is
+  authenticated by AES-GCM but not encrypted; the recipient must supply the same
+  context bytes the sender did, and any mismatch fails decryption. No
+  wire-format change, no key-schedule change, empty-AAD default keeps existing
+  behavior.
+
+For consumers like KeyPears that federate across multiple domains and have
+multiple message types, the AAD construction will look something like:
+
+```typescript
+const aad = WebBuf.concat([
+  WebBuf.fromArray([PROTOCOL_VERSION]),
+  WebBuf.fromArray([MESSAGE_TYPE]),
+  WebBuf.fromUtf8(senderAddress),
+  WebBuf.fromArray([0]),
+  WebBuf.fromUtf8(recipientAddress),
+]);
+```
+
+binding all four pieces of context into the authenticated tag without affecting
+the wire format.
+
 ## Tests
 
 - 16 unit tests covering round-trip, size invariants, version byte,

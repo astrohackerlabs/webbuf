@@ -14,7 +14,7 @@ crate-type = ["cdylib", "rlib"]
 wasm = ["wasm-bindgen"]
 
 [dependencies]
-ml-kem = { version = "0.2.3", features = ["deterministic"] }
+ml-kem = { version = "=0.2.3", features = ["deterministic"] }
 
 [dependencies.wasm-bindgen]
 version = "0.2"

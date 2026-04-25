@@ -87,6 +87,50 @@ The package's authentication relies entirely on AES-GCM's tag:
 
 In all rejection cases, `aesgcmMlkemDecrypt` throws.
 
+## Scope
+
+This package authenticates a ciphertext under the recipient's ML-KEM-768 keypair
+using AES-256-GCM. It does not bind any external context — the recipient gets
+back the plaintext if and only if they hold the matching decapsulation key, but
+no other application-level data is verified.
+
+**What this package binds (AES-GCM tag fails on mismatch):**
+
+- The recipient's ML-KEM encapsulation / decapsulation keys (a wrong
+  decapsulation key produces a different shared secret per FIPS 203's implicit
+  rejection, which produces a wrong AES key, which fails the AES-GCM tag).
+- The KEM ciphertext bytes (tampering causes decapsulation to produce a
+  different shared secret, same chain).
+- The AES-GCM IV and ciphertext bytes (tampering fails the tag directly).
+- The wire-format version byte `0x01` (a `0x02` ciphertext from the hybrid
+  `@webbuf/aesgcm-p256dh-mlkem` package is rejected up front with a clear
+  error).
+
+**What this package does not bind:**
+
+- Sender's federation identity / address (the encrypter does not have a notion
+  of "sender" at all — pure-PQ encrypts to the recipient's encapsulation key,
+  full stop).
+- Recipient's federation identity / address (only the keypair).
+- Application protocol version (beyond the wire-format byte).
+- Message type — text vs. signed challenge vs. control vs. vault entry all share
+  the same key schedule.
+- Any transcript, message-ID, or sequence number.
+
+**If you need those bindings:**
+
+- **Today (works, ugly):** prepend your context bytes to the plaintext before
+  encryption and parse them off after decryption. The cost is that the
+  encrypted-vs-authenticated line gets blurry and every consumer reinvents the
+  same framing.
+- **Soon (clean):** use the optional `aad` (Additional Authenticated Data)
+  parameter being added in
+  [issue 0006](../../issues/0006-aad-pq-encryption/README.md). AAD is
+  authenticated by AES-GCM but not encrypted; the recipient must supply the same
+  context bytes the sender did, and any mismatch fails decryption. No
+  wire-format change, no key-schedule change, empty-AAD default keeps existing
+  behavior.
+
 ## Tests
 
 - 13 unit tests covering round-trip, size invariants, version byte,
