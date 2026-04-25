@@ -51,6 +51,8 @@
     "@webbuf/aesgcm-p256dh": "workspace:^",
     "@webbuf/blake3": "workspace:^",
     "@webbuf/fixedbuf": "workspace:^",
+    "@webbuf/mlkem": "workspace:^",
+    "@webbuf/mldsa": "workspace:^",
     "@webbuf/numbers": "workspace:^",
     "@webbuf/ripemd160": "workspace:^",
     "@webbuf/rw": "workspace:^",
@@ -58,6 +60,7 @@
     "@webbuf/pbkdf2-sha256": "workspace:^",
     "@webbuf/secp256k1": "workspace:^",
     "@webbuf/sha256": "workspace:^",
+    "@webbuf/slhdsa": "workspace:^",
     "@webbuf/webbuf": "workspace:^"
   },
   "devDependencies": {

@@ -59,6 +59,12 @@ importers:
       '@webbuf/fixedbuf':
         specifier: workspace:^
         version: link:../npm-webbuf-fixedbuf
+      '@webbuf/mlkem':
+        specifier: workspace:^
+        version: link:../npm-webbuf-mlkem
+      '@webbuf/mldsa':
+        specifier: workspace:^
+        version: link:../npm-webbuf-mldsa
       '@webbuf/numbers':
         specifier: workspace:^
         version: link:../npm-webbuf-numbers
@@ -80,6 +86,9 @@ importers:
       '@webbuf/sha256':
         specifier: workspace:^
         version: link:../npm-webbuf-sha256
+      '@webbuf/slhdsa':
+        specifier: workspace:^
+        version: link:../npm-webbuf-slhdsa
       '@webbuf/webbuf':
         specifier: workspace:^
         version: link:../npm-webbuf-webbuf

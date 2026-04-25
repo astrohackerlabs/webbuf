@@ -1,6 +1,7 @@
 +++
-status = "open"
+status = "closed"
 opened = "2026-04-25"
+closed = "2026-04-25"
 +++
 
 # Post-quantum API hardening
@@ -609,10 +610,10 @@ for random key generation, and routes the high-level sign/verify APIs through
 empty context by default.
 
 Randomized or hedged ML-DSA signing was not added in this experiment. The
-preferred API uses the standardized deterministic ML-DSA.Sign variant because
-it is available from the pinned crate without adding RNG plumbing to the Rust
-WASM boundary. A future experiment can evaluate enabling upstream `rand_core`
-and passing TypeScript-generated randomness into a randomized signing export.
+preferred API uses the standardized deterministic ML-DSA.Sign variant because it
+is available from the pinned crate without adding RNG plumbing to the Rust WASM
+boundary. A future experiment can evaluate enabling upstream `rand_core` and
+passing TypeScript-generated randomness into a randomized signing export.
 
 The test suite now covers:
 
@@ -685,8 +686,8 @@ Add TypeScript wrappers:
 - `slhDsa*KeyPairDeterministic(...)` is the explicit seeded alias;
 - `slhDsa*Sign(signingKey, message, context?)` generates `addrnd` and signs at
   the message level;
-- `slhDsa*SignDeterministic(signingKey, message, context?)` signs at the
-  message level without caller-provided randomness;
+- `slhDsa*SignDeterministic(signingKey, message, context?)` signs at the message
+  level without caller-provided randomness;
 - `slhDsa*Verify(verifyingKey, message, signature, context?)` verifies at the
   message level.
 
@@ -695,9 +696,9 @@ unchanged and public.
 
 ### Implementation
 
-The Rust crate now exports message-level sign and verify wrappers for every
-SHA2 and SHAKE parameter set. The TypeScript package imports those exports and
-adds high-level overloads and aliases for the full parameter-set matrix.
+The Rust crate now exports message-level sign and verify wrappers for every SHA2
+and SHAKE parameter set. The TypeScript package imports those exports and adds
+high-level overloads and aliases for the full parameter-set matrix.
 
 Default high-level signing is hedged. The TypeScript wrapper generates an
 `addrnd` buffer with the parameter set's seed size and passes it into the
@@ -706,12 +707,11 @@ available through explicit `SignDeterministic` aliases.
 
 The test suite now covers:
 
-- no-argument key generation and high-level sign/verify for representative
-  SHA2 and SHAKE parameter sets;
+- no-argument key generation and high-level sign/verify for representative SHA2
+  and SHAKE parameter sets;
 - deterministic seeded keypair aliases;
 - deterministic message-level signing aliases;
-- default hedged signing producing distinct signatures for the same
-  key/message;
+- default hedged signing producing distinct signatures for the same key/message;
 - successful verification with the correct context;
 - failed verification with the wrong context;
 - rejection of contexts longer than 255 bytes;
@@ -738,3 +738,87 @@ after producing the bundle because it tries to remove a missing generated
 `README.md`. The produced bundle was synced and inlined successfully. The
 package test run included 182 passing tests, including the existing ACVP audit
 vectors.
+
+## Experiment 5: Documentation and integration cleanup
+
+### Goal
+
+Finish the post-quantum API hardening work by documenting preferred versus
+advanced APIs, wiring the PQ packages into the umbrella package, and fixing the
+known WASM helper cleanup failure.
+
+### Questions
+
+This experiment should answer:
+
+- Do the PQ packages explain which APIs are preferred for application code?
+- Does the umbrella `webbuf` package expose the PQ packages consistently with
+  the rest of the monorepo?
+- Do the PQ WASM helper scripts exit successfully when generated metadata files
+  are absent?
+- Do the already-hardened package tests and umbrella type checks still pass?
+
+### Method
+
+Add package READMEs for:
+
+- `@webbuf/mlkem`;
+- `@webbuf/mldsa`;
+- `@webbuf/slhdsa`.
+
+Each README documents the preferred high-level API, the deterministic/internal
+advanced APIs, and the role of ACVP vector coverage.
+
+Update the umbrella `webbuf` package to depend on and re-export:
+
+- `@webbuf/mlkem`;
+- `@webbuf/mldsa`;
+- `@webbuf/slhdsa`.
+
+Update the three PQ `wasm-pack-bundler.zsh` scripts to use `rm -f` for generated
+metadata cleanup, matching the fact that `wasm-pack` may not emit all of
+`.gitignore`, `package.json`, and `README.md` in every run.
+
+### Result: Pass
+
+Experiment 5 passed. The PQ packages now document the secure default APIs and
+the advanced deterministic/internal APIs, the umbrella package exports the PQ
+packages, and the PQ WASM helper cleanup no longer fails when metadata files are
+missing.
+
+Verification:
+
+- `pnpm install` in `ts`
+- `pnpm run typecheck` in `ts/npm-webbuf`
+- `pnpm run build:typescript` in `ts/npm-webbuf`
+- `pnpm test` in `ts/npm-webbuf-mlkem`
+- `pnpm test` in `ts/npm-webbuf-mldsa`
+- `pnpm test` in `ts/npm-webbuf-slhdsa`
+- `./wasm-pack-bundler.zsh` in `rs/webbuf_mlkem`
+
+All passed. The ML-KEM helper was used as the representative WASM helper check
+because the same cleanup fix was applied to all three PQ helper scripts.
+
+## Conclusion
+
+Issue 2 is complete. WebBuf's post-quantum TypeScript APIs now provide safer
+application-facing defaults while preserving deterministic and internal
+interfaces for test vectors, reproducibility, and expert use.
+
+ML-KEM now supports no-argument key generation and one-argument encapsulation
+that generate required entropy internally, plus explicit deterministic aliases.
+Existing deterministic overloads remain compatible with ACVP vectors.
+
+ML-DSA now exposes message-level signing and verification with FIPS 204 context
+separation, no-argument key generation, and deterministic aliases. The
+`Sign_internal` / `Verify_internal` wrappers remain public for ACVP coverage.
+
+SLH-DSA now exposes message-level signing and verification with FIPS 205 context
+separation across all SHA2 and SHAKE parameter sets. Default signing is hedged
+with TypeScript-generated `addrnd`; deterministic and internal aliases remain
+available for reproducible tests and ACVP vectors.
+
+The umbrella `webbuf` package now re-exports the PQ packages, the PQ package
+READMEs document preferred versus advanced usage, and the PQ WASM helper scripts
+no longer fail after a successful build when generated metadata files are
+absent.
