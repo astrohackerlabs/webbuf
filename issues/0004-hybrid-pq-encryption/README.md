@@ -315,6 +315,317 @@ This experiment passes if it produces a wire-format-and-KDF spec detailed enough
 that the next experiment can implement `@webbuf/aesgcm-mlkem` without
 re-debating any of these questions.
 
+### Findings
+
+#### RFC 5869 (HKDF)
+
+Two-step pattern: `HKDF-Extract(salt, IKM) → PRK` (32 bytes, the HMAC-SHA-256
+output length) and `HKDF-Expand(PRK, info, L) → OKM`. The `salt` parameter
+strengthens the construction by ensuring independence across uses; if absent, a
+zero-filled string of HashLen bytes is the documented default. `info` should
+bind protocol identifiers and algorithm specifics for domain separation. RFC
+5869 does not directly prescribe how to combine multiple shared secrets — that
+responsibility falls to higher-level standards.
+
+#### NIST SP 800-56C Rev. 2
+
+Specifies the same Two-Step Key Derivation pattern as HKDF, with HMAC-SHA-256 as
+the recommended PRF. WebBuf's `@webbuf/sha256` already exposes HMAC-SHA-256, so
+HKDF is implementable in pure TypeScript on top of it (Extract = 1 HMAC call,
+Expand for L=32 bytes = 1 HMAC call, total 2 HMAC calls per derivation).
+
+#### `draft-ietf-tls-hybrid-design-16`
+
+Section 3.3 specifies the combiner as **simple concatenation** of the classical
+and post-quantum shared secrets, with the concatenated value fed into TLS 1.3's
+existing HKDF-Extract stage. Section 3.2 fixes the order: **classical first,
+post-quantum second**, matching the NamedGroup definition. No length prefixes;
+lengths are fixed once the algorithm is fixed. Tampered-KEM-ciphertext detection
+relies on the AEAD authentication tag and the IND-CCA2 properties of the
+component KEMs (a tampered KEM ciphertext yields a different shared secret,
+which yields a different derived key, which fails AEAD verification).
+
+#### Signal PQXDH
+
+Section 2.2 uses HKDF with a hash parameter (SHA-256 or SHA-512), salt = HashLen
+zero bytes, and `info` = a literal ASCII string identifying the protocol, hash,
+curve, and KEM (e.g. `"MyProtocol_CURVE25519_SHA-512_CRYSTALS-KYBER-1024"`).
+Section 3.3 prepends a 32-byte (or 57-byte) `0xFF` prefix `F` to the IKM:
+`IKM = F || (DH1 || DH2 || DH3 || ... || SS)`. DH outputs come first; the KEM
+shared secret comes last. Wire format is "implementation defined, must be
+unambiguous" — no specific bytes prescribed.
+
+#### Synthesis
+
+Both real-world PQ-hybrid standards (TLS hybrid-design and PQXDH) use
+HKDF-SHA-256 and put the classical secret(s) before the PQ secret in the IKM.
+They differ on info/salt/prefix conventions because their host protocols differ:
+
+- TLS relies on its own multi-stage key schedule for context binding, so the
+  hybrid combiner is bare concatenation feeding into the existing HKDF-Extract
+  step.
+- PQXDH is its own protocol, so its KDF call carries an explicit
+  protocol-identifier `info` string and a `0xFF` prefix `F` (the prefix serves
+  the same role in X3DH and is preserved in PQXDH).
+
+WebBuf's combined packages aren't wrapped in a larger protocol that provides
+context, so we follow PQXDH's pattern of putting the binding into the HKDF call
+directly: explicit `info` string per package, zero-byte salt, classical-first
+IKM concatenation. We skip the `0xFF` prefix `F` — it's specific to X3DH/PQXDH's
+identity-key authenticated handshake and adds no security to a self-contained
+encryption primitive. The `info` string alone provides the domain separation we
+need.
+
+The choice to use HKDF (rather than raw SHA-256, which the existing
+`@webbuf/aesgcm-p256dh` uses) is driven by interop and standards alignment, not
+by a security flaw in raw SHA-256 of concatenated secrets. For a one-shot
+encryption with fresh per-message KEM material, both constructions are secure
+under standard assumptions. HKDF wins because it's the published standard and
+the cost of using it is negligible (2 extra HMAC calls in TypeScript).
+
+### Decision
+
+#### KDF
+
+**HKDF-SHA-256** (RFC 5869), implemented in TypeScript on top of the existing
+`@webbuf/sha256` HMAC-SHA-256 primitive. No new Rust crate needed. The
+implementation is approximately 20 lines:
+
+```typescript
+// Extract: PRK = HMAC-SHA-256(salt, IKM)
+const prk = hmacSha256(salt, ikm);
+// Expand for L=32: OKM = HMAC-SHA-256(PRK, info || 0x01)[0..32]
+const t1 = hmacSha256(prk, concat(info, [0x01]));
+const aesKey = t1.slice(0, 32);
+```
+
+#### Salt
+
+**32-byte zero salt** (`FixedBuf.alloc(32)`). Matches PQXDH and the RFC 5869
+default. Fixed across all WebBuf hybrid-PQ packages.
+
+#### Info strings (per package, exact UTF-8 bytes)
+
+| Package                       | Info string                     |
+| ----------------------------- | ------------------------------- |
+| `@webbuf/aesgcm-mlkem`        | `webbuf:aesgcm-mlkem v1`        |
+| `@webbuf/aesgcm-p256dh-mlkem` | `webbuf:aesgcm-p256dh-mlkem v1` |
+
+The trailing ` v1` lets us version the schedule independently of the package
+version. If we ever revise the KDF, info string, or wire format, we bump to
+` v2` and the version byte changes — old ciphertexts decrypt under the old
+scheme, new ones under the new.
+
+#### IKM concatenation order
+
+For `@webbuf/aesgcm-mlkem`:
+
+```
+IKM = kemSharedSecret  (32 bytes)
+```
+
+For `@webbuf/aesgcm-p256dh-mlkem`:
+
+```
+IKM = ecdhSharedSecret || kemSharedSecret  (32 + 32 = 64 bytes)
+```
+
+Where:
+
+- `ecdhSharedSecret` is the raw 32-byte X-coordinate produced by P-256 scalar
+  multiplication — the SEC1 X9.63 "Z" value used as input to a KDF in NIST SP
+  800-56A §5.7.1.2 and the IETF hybrid drafts. **We do not** apply the SHA-256
+  hashing that `@webbuf/aesgcm-p256dh` performs internally, and we **do not**
+  use the SEC1 compressed-point encoding (33 bytes with a 0x02/0x03 prefix byte)
+  that `@webbuf/p256`'s current `p256SharedSecret` returns. Both would be
+  WebBuf-specific deviations from how SP 800-56C and
+  `draft-ietf-tls-hybrid- design-16` feed IKM.
+- `kemSharedSecret` is the 32-byte ML-KEM-768 shared secret returned by
+  `decapsulate` / the second element of `encapsulate`'s output.
+
+Classical first, PQ second — matches both TLS hybrid-design and PQXDH.
+
+##### Required prerequisite: `p256SharedSecretRaw` helper
+
+The current `@webbuf/p256` API exposes:
+
+```typescript
+export function p256SharedSecret(
+  privKey: FixedBuf<32>,
+  pubKey: FixedBuf<33>,
+): FixedBuf<33>; // SEC1-compressed point: 0x02/0x03 prefix || X-coord (32 bytes)
+```
+
+The compressed-point output includes a 1-byte prefix that is deterministic given
+the X-coordinate, so it carries no extra entropy and stripping it is a trivial
+slice. But for IKM input we want the bare 32-byte X-coordinate, both for
+standards conformance and so that any independent implementation of this scheme
+produces the same ciphertexts.
+
+Before Experiment 2 can begin, `@webbuf/p256` must expose a new helper:
+
+```typescript
+export function p256SharedSecretRaw(
+  privKey: FixedBuf<32>,
+  pubKey: FixedBuf<33>,
+): FixedBuf<32>; // raw X-coordinate (32 bytes), the SEC1 X9.63 Z value
+```
+
+The underlying RustCrypto `p256` crate already produces this value before SEC1
+encoding (via `elliptic_curve::ecdh::diffie_hellman` returning a `SharedSecret`
+whose `.raw_secret_bytes()` is the X-coord). Adding the helper is small: one new
+exported function in `rs/webbuf_p256/src/p256_curve.rs` (roughly 10 lines), one
+new wasm-bindgen export, and one new TS wrapper.
+
+This work is a prerequisite to Experiment 2 — we'll either land it as a small
+preliminary commit before Experiment 2 or fold it into the start of Experiment
+2's implementation work. Calling it out explicitly here so the spec is grounded
+in an API that exists.
+
+#### AES key length and IV
+
+**AES-256-GCM**, so HKDF-Expand outputs L=32 bytes for the AES key.
+
+**12-byte random IV** per encryption, generated via `FixedBuf.fromRandom(12)`,
+prepended to the AES-GCM ciphertext. Matches `@webbuf/aesgcm-p256dh`'s existing
+convention. Since the AES key itself is fresh per message (derived from the
+unique-per-message KEM shared secret), the IV uniqueness requirement is
+automatically satisfied; the random IV is defense-in-depth.
+
+#### Wire format
+
+##### `@webbuf/aesgcm-mlkem` (scheme byte `0x01`)
+
+| Offset   | Length | Field                                                    |
+| -------- | ------ | -------------------------------------------------------- |
+| 0        | 1      | Version byte: `0x01`                                     |
+| 1        | 1088   | ML-KEM-768 ciphertext (fixed)                            |
+| 1089     | 12     | AES-GCM IV (fixed)                                       |
+| 1101     | N      | AES-GCM ciphertext (variable, equal to plaintext length) |
+| 1101 + N | 16     | AES-GCM authentication tag (fixed)                       |
+
+Total fixed overhead: **1117 bytes** per message.
+
+##### `@webbuf/aesgcm-p256dh-mlkem` (scheme byte `0x02`)
+
+| Offset   | Length | Field                              |
+| -------- | ------ | ---------------------------------- |
+| 0        | 1      | Version byte: `0x02`               |
+| 1        | 1088   | ML-KEM-768 ciphertext (fixed)      |
+| 1089     | 12     | AES-GCM IV (fixed)                 |
+| 1101     | N      | AES-GCM ciphertext (variable)      |
+| 1101 + N | 16     | AES-GCM authentication tag (fixed) |
+
+Total fixed overhead: **1117 bytes** per message.
+
+The hybrid package uses the same wire layout but a different scheme byte
+(`0x02`) and a different HKDF IKM (32 + 32 bytes instead of 32). The
+classical-side ECDH inputs (`senderPrivKey`, `recipientPubKey`) are out-of-band
+— sender and recipient must know each other's persistent P-256 keys, matching
+`@webbuf/aesgcm-p256dh`'s static-static pattern. No ephemeral P-256 public key
+on the wire; if forward secrecy on the classical side is desired, that's a
+separate scheme (likely `@webbuf/aesgcm-p256dhe-mlkem` later).
+
+The version byte doubles as a scheme identifier: feeding a `0x02` ciphertext
+into `aesgcmMlkemDecrypt` (which expects `0x01`) fails fast with a clear error
+rather than a silent AEAD-tag mismatch.
+
+#### `@webbuf/aesgcm-p256dh` legacy status
+
+Remains unchanged and supported. The new packages are not drop-in replacements;
+they have a different KDF, different wire format, and the hybrid variant has
+different security properties. Documenting the choice as a deliberate fork
+rather than a successor is correct.
+
+### Test vectors
+
+A complete spec needs at least one byte-level known-answer test vector per
+package, captured at this stage and embedded here as the contract that
+Experiment 2's implementation must reproduce. Without KATs, "implementable
+without re-debating" leaves room for an implementer to interpret the spec in a
+way that diverges from intent.
+
+These are intentionally placeholder values. They will be filled in once the
+prerequisite `p256SharedSecretRaw` helper exists — the helper is needed both for
+the hybrid KAT and for the implementation, so capturing the KAT and adding the
+helper happen together.
+
+#### `@webbuf/aesgcm-mlkem` v1 KAT (placeholder)
+
+| Field                 | Value (hex)             |
+| --------------------- | ----------------------- |
+| ML-KEM-768 d (seed 1) | `_to be captured_`      |
+| ML-KEM-768 z (seed 2) | `_to be captured_`      |
+| ML-KEM-768 m (encap)  | `_to be captured_`      |
+| Plaintext (UTF-8)     | `"hello, post-quantum"` |
+| AES-GCM IV            | `_to be captured_`      |
+| Output ciphertext     | `_to be captured_`      |
+
+#### `@webbuf/aesgcm-p256dh-mlkem` v1 KAT (placeholder)
+
+| Field                       | Value (hex)        |
+| --------------------------- | ------------------ |
+| Sender P-256 priv           | `_to be captured_` |
+| Recipient P-256 priv        | `_to be captured_` |
+| Recipient P-256 pub (33B)   | `_derived_`        |
+| Recipient ML-KEM d (seed 1) | `_to be captured_` |
+| Recipient ML-KEM z (seed 2) | `_to be captured_` |
+| ML-KEM m (encap randomness) | `_to be captured_` |
+| Plaintext (UTF-8)           | `"hybrid"`         |
+| AES-GCM IV                  | `_to be captured_` |
+| Output ciphertext           | `_to be captured_` |
+
+The KAT inputs include all randomness sources (deterministic seeds for keypair
+generation, fixed `m` for encapsulation, fixed AES-GCM IV) so the output is
+deterministic given the inputs. Experiment 2's implementation will hold these
+constant in a test and assert against the captured output.
+
+### Result: Partial
+
+Experiment 1 settled the core design questions but left the classical-side IKM
+input under-specified relative to the actual `@webbuf/p256` API. The delta below
+summarizes what's pinned and what blocks the upgrade to a clean `Pass`.
+
+**Pinned:**
+
+- **HKDF-SHA-256** (RFC 5869, NIST SP 800-56C Rev. 2) — implementable in
+  TypeScript over `@webbuf/sha256`'s HMAC primitive.
+- **Zero salt** (32 bytes), **per-package info string** with `v1` suffix —
+  PQXDH-style domain separation.
+- **Classical-first IKM concatenation** — matches TLS hybrid-design and PQXDH.
+- **IKM input shape:** raw 32-byte ECDH X-coordinate (NOT the SEC1-compressed
+  33-byte form, NOT the existing `aesgcm-p256dh`'s pre-hashed value),
+  concatenated with the 32-byte ML-KEM shared secret.
+- **AES-256-GCM** with 32-byte HKDF-Expand output and **random 12-byte IV** per
+  encryption — matches existing `@webbuf/aesgcm-p256dh`.
+- **Wire format:** version byte (`0x01` or `0x02`) || ML-KEM ciphertext (1088)
+  || IV (12) || AES-GCM ct+tag. Total fixed overhead 1117 bytes.
+- **Distinct version bytes** for fast scheme-mismatch detection.
+- **`@webbuf/aesgcm-p256dh` legacy status:** unchanged, supported, not a
+  predecessor.
+
+**Open (blocking promotion to `Pass`):**
+
+1. **`p256SharedSecretRaw` helper** does not yet exist in `@webbuf/p256`. The
+   current `p256SharedSecret` returns a 33-byte compressed point. The spec is
+   grounded in a 32-byte raw-X-coord input that no current API exposes. Need to
+   add the helper (small Rust + TS change) before the hybrid package can be
+   implemented to spec.
+2. **KAT byte vectors** are placeholders. Capturing them requires the helper
+   above (for the hybrid KAT) and a one-shot capture run for the pure-PQ KAT.
+   Once captured, Experiment 2 can use them as a test contract.
+
+**Promotion criterion:** Experiment 1 closes as `Pass` when the
+`p256SharedSecretRaw` helper has landed in `@webbuf/p256` with tests, and the
+two KAT tables above are filled in with concrete hex values. Both items are
+mechanical follow-up work; neither requires further design deliberation.
+Expected effort: ~1 hour for the helper, ~30 minutes to capture and embed both
+KATs.
+
+These two items will be folded into the start of Experiment 2 rather than
+spawning a separate experiment, since they're prerequisites for the
+implementation work and don't change the design.
+
 ## Plan
 
 Pin the key schedule and wire format first (Experiment 1, above), then build the
