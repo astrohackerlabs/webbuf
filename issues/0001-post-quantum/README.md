@@ -617,5 +617,191 @@ to the seed-form sk and have downstream consumers re-derive expanded form on
 demand.
 
 Next experiment: scaffold `@webbuf/slhdsa` (SLH-DSA / FIPS 205) using the same
-template. SLH-DSA has 12 parameter sets (small/fast × SHA2/SHAKE × 4 security
-levels) — needs design thought on which to expose.
+template. SLH-DSA has 12 parameter sets (small/fast × SHA2/SHAKE × 3 security
+levels).
+
+## Experiment 5: Scaffold `@webbuf/slhdsa` and verify against NIST vectors
+
+### Goal
+
+Same shape as Experiments 3 and 4, applied to SLH-DSA / FIPS 205:
+
+1. `rs/webbuf_slhdsa` Rust crate compiles cleanly to `wasm32-unknown-unknown`.
+2. `ts/npm-webbuf-slhdsa` TypeScript wrapper builds via the existing pipeline.
+3. The wrapper produces output matching official NIST ACVP test vectors for all
+   12 FIPS 205 parameter sets.
+
+### The 12 parameter sets
+
+FIPS 205 specifies twelve named parameter sets, indexed across three axes:
+
+| Axis           | Values                                        |
+| -------------- | --------------------------------------------- |
+| Hash family    | `SHA2`, `SHAKE`                               |
+| Security level | `128`, `192`, `256` (categories 1/3/5)        |
+| Tradeoff       | `s` (small sig, slow) / `f` (fast sig, large) |
+
+Names: `SLH-DSA-{SHA2,SHAKE}-{128,192,256}{s,f}`.
+
+Sizes:
+
+| Set           | n   | pk  | sk  | sig (s) | sig (f) |
+| ------------- | --- | --- | --- | ------- | ------- |
+| 128 / SLH-DSA | 16  | 32  | 64  | 7,856   | 17,088  |
+| 192 / SLH-DSA | 24  | 48  | 96  | 16,224  | 35,664  |
+| 256 / SLH-DSA | 32  | 64  | 128 | 29,792  | 49,856  |
+
+Keys are tiny (32–128 bytes — far smaller than ML-DSA's 1.3–4.9KB) but
+signatures are huge (8KB – 50KB). This is the point of SLH-DSA: hash-based
+security at the cost of signature size.
+
+### Ship all 12
+
+WebBuf is a primitives library; consumers should choose. The macro pattern from
+Experiments 3 and 4 scales fine — 12 `slhdsa_impl!` invocations produce 36
+wasm-bindgen functions with no per-set hand coding. WASM size will grow but
+SLH-DSA is hash-based, so the implementation reuses SHA-2 / SHAKE primitives
+across parameter sets — actual code duplication is modest.
+
+### API surface
+
+For each parameter set: `keypair`, `sign_internal`, `verify_internal`.
+
+- **Keypair** takes three n-byte seeds (`sk_seed`, `sk_prf`, `pk_seed`) per FIPS
+  205 SLH-Keygen-internal. Outputs `pk || sk` concatenated.
+- **Sign internal** takes `sk`, message, optional n-byte `addrnd`. Per FIPS 205
+  §10.2, `addrnd = None` is the deterministic variant (uses pk_seed as the
+  randomizer); `addrnd = Some(rnd)` is the hedged variant.
+- **Verify internal** takes `pk`, message, signature.
+
+The seed sizes are parameter-set-dependent (16/24/32 bytes) — unlike ML-KEM and
+ML-DSA where everything is 32-byte seeds.
+
+### Plan
+
+1. Look at the `slh-dsa` 0.2.0-rc.4 source for `slh_keygen_internal` /
+   `slh_sign_internal` / `slh_verify_internal` signatures.
+2. Write `rs/webbuf_slhdsa/Cargo.toml`
+   (`default-features = false, features = ["alloc"]` — skip `pkcs8`) and
+   `src/lib.rs` with a macro emitting 36 functions.
+3. Round-trip Rust tests for one parameter set per security level.
+4. Build WASM; check size.
+5. Scaffold `ts/npm-webbuf-slhdsa/` mirroring the previous packages.
+6. Vendor NIST ACVP-Server FIPS 205 vectors (keyGen, sigGen, sigVer).
+7. Audit suite iterating all three test types across all 12 parameter sets.
+8. Run; record results, WASM size, gotchas.
+
+### Implementation
+
+Built `rs/webbuf_slhdsa` (~125 lines of Rust + ~95 lines of round-trip tests via
+12 macro invocations) and `ts/npm-webbuf-slhdsa` (~470 lines of TypeScript —
+necessarily verbose to expose 36 typed functions). The macro pattern continues
+to scale; each parameter set adds five lines of macro invocation.
+
+Pipeline gotchas discovered:
+
+- **slh-dsa requires its default features.** Trying
+  `default-features = false, features = ["alloc"]` fails to compile because the
+  crate has unconditional `EncodePrivateKey` impls referencing
+  `der::SecretDocument`, which requires `der/alloc + der/zeroize`. The
+  `pkcs8/alloc` feature in slh-dsa's defaults pulls in the right transitive
+  features. Just use defaults — they're fine for our purposes.
+- **`slh_sign_internal` panics on wrong-length `opt_rand`.** The docstring warns
+  about it explicitly. Validated `opt_rand.len() == n` (or empty) before passing
+  through to avoid crashing the WASM module.
+- **NIST ACVP sigVer vectors include wrong-size signatures.** Our wrapper uses
+  `FixedBuf<sigSize>` typed at the API boundary, which throws on size mismatch.
+  The audit suite catches this and treats it as a failed verification, matching
+  `testPassed: false` for negative-test vectors.
+- **NIST vectors don't cover all 12 parameter sets.** The ACVP-Server publishes
+  only a subset (4 in keyGen, 5 in sigGen, 5 in sigVer). The audit runs whatever
+  vectors are provided; the rest of the parameter sets rely on round-trip
+  self-test only.
+- **NIST ACVP sigGen "deterministic = true" tests don't include `rnd`.** Per
+  FIPS 205, deterministic uses `pkSeed` as the randomizer; our wrapper treats
+  empty `opt_rand` as the deterministic variant. This matches the `slh-dsa`
+  crate's behavior.
+
+The `s` (small signature) variants are genuinely slow — SLH-DSA-SHAKE-192s takes
+~1.3 seconds per signing operation in WASM. The `f` (fast) variants are an order
+of magnitude faster. This is expected from the algorithm design and matches FIPS
+205's published performance characteristics.
+
+### Result: Pass
+
+**Rust:** 6/6 unit tests pass (round-trip across SHA2-128f, SHAKE-192s,
+SHA2-256f, plus deterministic-signing reproducibility, tampered-signature
+rejection, input validation). `cargo check` and
+`wasm-pack build --target bundler` both clean.
+
+**WASM size:** 336KB raw, 448KB after base64 inlining. The largest of the three
+PQC packages — expected, since 12 parameter sets × 3 functions = 36 exposed
+functions, plus SHA-2 / SHAKE primitives. Still acceptable for a
+synchronous-load TypeScript package; `@webbuf/slhdsa` is the assumption-
+diversity hedge package, not the everyday default, so size is less critical.
+
+**TypeScript:** typecheck passes, `pnpm run build` produces a clean `dist/`, and
+the test suite reports:
+
+```
+✓ test/index.test.ts (4 tests) 1472ms
+✓ test/audit.test.ts (177 tests)
+
+Test Files  2 passed (2)
+     Tests  181 passed (181)
+Duration  ~30s
+```
+
+The 177 audit tests exercise the official NIST ACVP-Server FIPS 205 vectors
+(commit `65370b8`):
+
+- **keyGen**: 4 parameter sets × 10 = 40 tests. All pk and sk match.
+- **sigGen**: 5 parameter sets × 2 variants (deterministic, hedged) × varying
+  counts = 92 tests. All signatures match exactly.
+- **sigVer**: 5 parameter sets × 9 = 45 tests. All `testPassed` expectations
+  match.
+
+**All 177 NIST vectors match exactly.** Total runtime ~30s, dominated by the
+slow `s` (small signature) variants which take ~1.3s per signing operation —
+characteristic of SLH-DSA, not a wrapper issue.
+
+### Conclusion
+
+All three NIST-finalized PQC algorithms are now packaged in WebBuf:
+
+| Package          | Algorithm | WASM (raw) | NIST vectors | Notes                                        |
+| ---------------- | --------- | ---------- | ------------ | -------------------------------------------- |
+| `@webbuf/mlkem`  | ML-KEM    | 89KB       | 180/180 ✓    | KEM, lattice, fastest                        |
+| `@webbuf/mldsa`  | ML-DSA    | 189KB      | 180/180 ✓    | Signatures, lattice, default general-purpose |
+| `@webbuf/slhdsa` | SLH-DSA   | 336KB      | 177/177 ✓    | Signatures, hash-based, conservative hedge   |
+
+The Rust → WASM → base64-inline → TypeScript pipeline scales to PQC. All three
+algorithms wrap RustCrypto crates with no per-algorithm engineering beyond the
+standard webbuf template. NIST ACVP coverage is complete for ML-KEM and ML-DSA;
+SLH-DSA coverage is limited to the parameter sets NIST chose to publish vectors
+for (4 of 12 in keyGen, 5 of 12 in sig{Gen,Ver}).
+
+The known caveats remain those identified in Experiment 2:
+
+1. **No public independent audit** of any Rust PQC implementation.
+2. **`ml-dsa` advisory cluster** (Dec 2025 – Mar 2026) requires staying on rc.8
+   or later and tracking RUSTSEC.
+3. **Pre-1.0 API churn** — all three crates are at `0.x.0-rc.N`. We pin exact
+   versions (`=0.2.3` for `ml-kem`, `=0.1.0-rc.8` for `ml-dsa`, `=0.2.0-rc.4`
+   for `slh-dsa`) to avoid surprise upgrades.
+4. **Deprecated `to_expanded`/`from_expanded`** in `ml-dsa` is still needed for
+   FIPS 204 sk encoding / NIST ACVP compatibility.
+
+The original issue Goal — "Add post-quantum signature and key-encapsulation
+primitives to WebBuf, packaged the same way as the existing primitives" — is
+met. All NIST-finalized PQC algorithms ship as `@webbuf/mlkem`, `@webbuf/mldsa`,
+and `@webbuf/slhdsa`. KeyPears and other downstream consumers can now build
+hybrid post-quantum cryptography on top of WebBuf primitives.
+
+Future WebBuf work (deferred to a follow-up issue):
+
+- Hybrid packages combining classical (P-256) with PQC: `@webbuf/p256-mlkem` for
+  KEM-side hybrid, `@webbuf/p256-mldsa` for signature-side hybrid.
+- FN-DSA (Falcon) when FIPS 206 publishes.
+- HQC when its FIPS standard publishes.
+- Bumping pinned versions as RustCrypto crates reach 1.0 stable releases.

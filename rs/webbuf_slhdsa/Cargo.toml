@@ -1,0 +1,24 @@
+[package]
+name = "webbuf_slhdsa"
+description = "SLH-DSA (FIPS 205) post-quantum hash-based digital signatures for WebBuf with optional WASM support."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+slh-dsa = "=0.2.0-rc.4"
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+optional = true
+
+[dev-dependencies]
+hex = "0.4"
