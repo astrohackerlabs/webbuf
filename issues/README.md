@@ -2,8 +2,10 @@
 
 ## Open
 
-| #   | Title | Opened |
-| --- | ----- | ------ |
+| #                                               | Title                                                        | Opened     |
+| ----------------------------------------------- | ------------------------------------------------------------ | ---------- |
+| [0005](0005-pin-mlkem-and-scope-docs/README.md) | Pin ml-kem exactly and clarify PQ encryption scope docs      | 2026-04-25 |
+| [0006](0006-aad-pq-encryption/README.md)        | AAD support for AES-GCM and post-quantum encryption packages | 2026-04-25 |
 
 ## Closed
 
