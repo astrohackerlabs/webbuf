@@ -54,44 +54,50 @@ let WASM_VECTOR_LEN = 0;
  * @param {Uint8Array} ciphertext
  * @param {Uint8Array} key
  * @param {Uint8Array} iv
+ * @param {Uint8Array} aad
  * @returns {Uint8Array}
  */
-export function aesgcm_decrypt(ciphertext, key, iv) {
+export function aesgcm_decrypt(ciphertext, key, iv, aad) {
     const ptr0 = passArray8ToWasm0(ciphertext, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ptr1 = passArray8ToWasm0(key, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
     const ptr2 = passArray8ToWasm0(iv, wasm.__wbindgen_malloc);
     const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.aesgcm_decrypt(ptr0, len0, ptr1, len1, ptr2, len2);
+    const ptr3 = passArray8ToWasm0(aad, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.aesgcm_decrypt(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
-    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
-    return v4;
+    return v5;
 }
 
 /**
  * @param {Uint8Array} plaintext
  * @param {Uint8Array} key
  * @param {Uint8Array} iv
+ * @param {Uint8Array} aad
  * @returns {Uint8Array}
  */
-export function aesgcm_encrypt(plaintext, key, iv) {
+export function aesgcm_encrypt(plaintext, key, iv, aad) {
     const ptr0 = passArray8ToWasm0(plaintext, wasm.__wbindgen_malloc);
     const len0 = WASM_VECTOR_LEN;
     const ptr1 = passArray8ToWasm0(key, wasm.__wbindgen_malloc);
     const len1 = WASM_VECTOR_LEN;
     const ptr2 = passArray8ToWasm0(iv, wasm.__wbindgen_malloc);
     const len2 = WASM_VECTOR_LEN;
-    const ret = wasm.aesgcm_encrypt(ptr0, len0, ptr1, len1, ptr2, len2);
+    const ptr3 = passArray8ToWasm0(aad, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.aesgcm_encrypt(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
     if (ret[3]) {
         throw takeFromExternrefTable0(ret[2]);
     }
-    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
-    return v4;
+    return v5;
 }
 
 export function __wbindgen_cast_2241b6af4c4b2941(arg0, arg1) {
