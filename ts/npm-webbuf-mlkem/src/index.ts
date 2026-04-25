@@ -72,9 +72,31 @@ function splitEncap<CtSize extends number, SsSize extends number>(
   };
 }
 
+function randomEntropy(): FixedBuf<32> {
+  return FixedBuf.fromRandom(32);
+}
+
 // ML-KEM-512
 
+export function mlKem512KeyPair(): MlKemKeyPair<800, 1632>;
 export function mlKem512KeyPair(
+  d: FixedBuf<32>,
+  z: FixedBuf<32>,
+): MlKemKeyPair<800, 1632>;
+export function mlKem512KeyPair(
+  d?: FixedBuf<32>,
+  z?: FixedBuf<32>,
+): MlKemKeyPair<800, 1632> {
+  if (d === undefined && z === undefined) {
+    return mlKem512KeyPairDeterministic(randomEntropy(), randomEntropy());
+  }
+  if (d === undefined || z === undefined) {
+    throw new Error("mlKem512KeyPair requires both d and z, or neither");
+  }
+  return mlKem512KeyPairDeterministic(d, z);
+}
+
+export function mlKem512KeyPairDeterministic(
   d: FixedBuf<32>,
   z: FixedBuf<32>,
 ): MlKemKeyPair<800, 1632> {
@@ -83,6 +105,23 @@ export function mlKem512KeyPair(
 }
 
 export function mlKem512Encapsulate(
+  encapsulationKey: FixedBuf<800>,
+): MlKemEncapResult<768, 32>;
+export function mlKem512Encapsulate(
+  encapsulationKey: FixedBuf<800>,
+  m: FixedBuf<32>,
+): MlKemEncapResult<768, 32>;
+export function mlKem512Encapsulate(
+  encapsulationKey: FixedBuf<800>,
+  m?: FixedBuf<32>,
+): MlKemEncapResult<768, 32> {
+  return mlKem512EncapsulateDeterministic(
+    encapsulationKey,
+    m ?? randomEntropy(),
+  );
+}
+
+export function mlKem512EncapsulateDeterministic(
   encapsulationKey: FixedBuf<800>,
   m: FixedBuf<32>,
 ): MlKemEncapResult<768, 32> {
@@ -100,7 +139,25 @@ export function mlKem512Decapsulate(
 
 // ML-KEM-768
 
+export function mlKem768KeyPair(): MlKemKeyPair<1184, 2400>;
 export function mlKem768KeyPair(
+  d: FixedBuf<32>,
+  z: FixedBuf<32>,
+): MlKemKeyPair<1184, 2400>;
+export function mlKem768KeyPair(
+  d?: FixedBuf<32>,
+  z?: FixedBuf<32>,
+): MlKemKeyPair<1184, 2400> {
+  if (d === undefined && z === undefined) {
+    return mlKem768KeyPairDeterministic(randomEntropy(), randomEntropy());
+  }
+  if (d === undefined || z === undefined) {
+    throw new Error("mlKem768KeyPair requires both d and z, or neither");
+  }
+  return mlKem768KeyPairDeterministic(d, z);
+}
+
+export function mlKem768KeyPairDeterministic(
   d: FixedBuf<32>,
   z: FixedBuf<32>,
 ): MlKemKeyPair<1184, 2400> {
@@ -109,6 +166,23 @@ export function mlKem768KeyPair(
 }
 
 export function mlKem768Encapsulate(
+  encapsulationKey: FixedBuf<1184>,
+): MlKemEncapResult<1088, 32>;
+export function mlKem768Encapsulate(
+  encapsulationKey: FixedBuf<1184>,
+  m: FixedBuf<32>,
+): MlKemEncapResult<1088, 32>;
+export function mlKem768Encapsulate(
+  encapsulationKey: FixedBuf<1184>,
+  m?: FixedBuf<32>,
+): MlKemEncapResult<1088, 32> {
+  return mlKem768EncapsulateDeterministic(
+    encapsulationKey,
+    m ?? randomEntropy(),
+  );
+}
+
+export function mlKem768EncapsulateDeterministic(
   encapsulationKey: FixedBuf<1184>,
   m: FixedBuf<32>,
 ): MlKemEncapResult<1088, 32> {
@@ -126,7 +200,25 @@ export function mlKem768Decapsulate(
 
 // ML-KEM-1024
 
+export function mlKem1024KeyPair(): MlKemKeyPair<1568, 3168>;
 export function mlKem1024KeyPair(
+  d: FixedBuf<32>,
+  z: FixedBuf<32>,
+): MlKemKeyPair<1568, 3168>;
+export function mlKem1024KeyPair(
+  d?: FixedBuf<32>,
+  z?: FixedBuf<32>,
+): MlKemKeyPair<1568, 3168> {
+  if (d === undefined && z === undefined) {
+    return mlKem1024KeyPairDeterministic(randomEntropy(), randomEntropy());
+  }
+  if (d === undefined || z === undefined) {
+    throw new Error("mlKem1024KeyPair requires both d and z, or neither");
+  }
+  return mlKem1024KeyPairDeterministic(d, z);
+}
+
+export function mlKem1024KeyPairDeterministic(
   d: FixedBuf<32>,
   z: FixedBuf<32>,
 ): MlKemKeyPair<1568, 3168> {
@@ -135,6 +227,23 @@ export function mlKem1024KeyPair(
 }
 
 export function mlKem1024Encapsulate(
+  encapsulationKey: FixedBuf<1568>,
+): MlKemEncapResult<1568, 32>;
+export function mlKem1024Encapsulate(
+  encapsulationKey: FixedBuf<1568>,
+  m: FixedBuf<32>,
+): MlKemEncapResult<1568, 32>;
+export function mlKem1024Encapsulate(
+  encapsulationKey: FixedBuf<1568>,
+  m?: FixedBuf<32>,
+): MlKemEncapResult<1568, 32> {
+  return mlKem1024EncapsulateDeterministic(
+    encapsulationKey,
+    m ?? randomEntropy(),
+  );
+}
+
+export function mlKem1024EncapsulateDeterministic(
   encapsulationKey: FixedBuf<1568>,
   m: FixedBuf<32>,
 ): MlKemEncapResult<1568, 32> {

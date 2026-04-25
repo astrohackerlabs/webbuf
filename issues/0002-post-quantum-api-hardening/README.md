@@ -485,3 +485,72 @@ The next experiment should implement the ML-KEM high-level API first. ML-KEM is
 the smallest and lowest-risk slice because it can be implemented entirely in the
 TypeScript wrapper by generating `d`, `z`, and `m` with `FixedBuf.fromRandom`
 and delegating to the existing deterministic Rust/WASM functions.
+
+## Experiment 2: Implement the ML-KEM high-level API
+
+### Goal
+
+Add the preferred ML-KEM application API designed in Experiment 1 without
+breaking the existing deterministic interface used by ACVP vectors and current
+callers.
+
+### Questions
+
+This experiment should answer:
+
+- Can the safer ML-KEM path be implemented entirely in the TypeScript wrapper?
+- Do overloads preserve the existing deterministic function names without
+  weakening the preferred no-entropy API?
+- Do explicit deterministic aliases make the advanced behavior clear enough for
+  tests and conformance usage?
+- Do existing ACVP tests continue to pass unchanged?
+
+### Method
+
+Implement overloads for all three ML-KEM parameter sets:
+
+- `mlKem*KeyPair()` generates `d` and `z` with `FixedBuf.fromRandom(32)`;
+- `mlKem*KeyPair(d, z)` remains a compatibility overload;
+- `mlKem*Encapsulate(encapsulationKey)` generates `m` with
+  `FixedBuf.fromRandom(32)`;
+- `mlKem*Encapsulate(encapsulationKey, m)` remains a compatibility overload.
+
+Add explicit deterministic aliases for every parameter set:
+
+- `mlKem*KeyPairDeterministic(d, z)`;
+- `mlKem*EncapsulateDeterministic(encapsulationKey, m)`.
+
+Partial runtime key-generation calls with only one entropy input should throw,
+because silently mixing caller-provided and wrapper-generated entropy would make
+the API harder to reason about.
+
+### Implementation
+
+The implementation stayed in `@webbuf/mlkem`'s TypeScript wrapper. No Rust/WASM
+changes were needed. The high-level overloads generate entropy with
+`FixedBuf.fromRandom(32)` and delegate to the deterministic aliases, which in
+turn call the existing WASM exports.
+
+The test suite now covers:
+
+- no-argument key generation and encapsulation round-trips for ML-KEM-512,
+  ML-KEM-768, and ML-KEM-1024;
+- fresh-randomness behavior for default key generation and encapsulation;
+- deterministic alias equivalence with the existing compatibility overloads;
+- deterministic alias availability for every ML-KEM parameter set;
+- runtime rejection of partial deterministic key-generation entropy;
+- unchanged ACVP vector coverage.
+
+### Result: Pass
+
+Experiment 2 passed. The ML-KEM package now has a safer application-facing
+default path while retaining the old deterministic behavior for compatibility
+and test-vector work.
+
+Verification:
+
+- `pnpm run typecheck` in `ts/npm-webbuf-mlkem`
+- `pnpm test` in `ts/npm-webbuf-mlkem`
+
+Both passed. The package test run included 189 passing tests, including the
+existing ACVP audit vectors.
