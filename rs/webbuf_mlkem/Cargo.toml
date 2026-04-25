@@ -1,0 +1,24 @@
+[package]
+name = "webbuf_mlkem"
+description = "ML-KEM (FIPS 203) post-quantum key encapsulation for WebBuf with optional WASM support."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+ml-kem = { version = "0.2.3", features = ["deterministic"] }
+
+[dependencies.wasm-bindgen]
+version = "0.2"
+optional = true
+
+[dev-dependencies]
+hex = "0.4"

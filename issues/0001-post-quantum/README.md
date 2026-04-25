@@ -347,3 +347,138 @@ pipeline. The audit gap is real but unavoidable — it's a property of the entir
 Rust PQC ecosystem, not a WebBuf-specific problem. Next experiment will start
 the implementation phase: scaffold `rs/webbuf_mlkem` and `ts/npm-webbuf-mlkem`
 and verify the build pipeline end-to-end with NIST test vectors.
+
+## Experiment 3: Scaffold `@webbuf/mlkem` and verify against NIST vectors
+
+### Goal
+
+Stand up the first PQC package in WebBuf — `@webbuf/mlkem` wrapping the
+RustCrypto `ml-kem` crate — and prove the pipeline works end-to-end:
+
+1. `rs/webbuf_mlkem` Rust crate compiles cleanly to `wasm32-unknown-unknown`.
+2. `ts/npm-webbuf-mlkem` TypeScript wrapper builds via the existing Rust → WASM
+   → base64-inline → TS pipeline.
+3. The wrapper produces output matching official NIST ACVP/KAT test vectors for
+   all three FIPS 203 parameter sets (ML-KEM-512, ML-KEM-768, ML-KEM-1024).
+
+ML-KEM is the right starting point: simplest API (three operations: keygen,
+encapsulate, decapsulate), no recent advisories, and the highest-priority
+algorithm for downstream consumers (key exchange is the harvest-now-decrypt-
+later target).
+
+### Why ML-KEM first
+
+- **Cleanest crate.** `ml-kem` 0.2.x is stable and has no RUSTSEC advisories.
+  Starting here means any pipeline issues we hit are WebBuf-side problems, not
+  crate-side problems.
+- **Smallest API surface.** Three operations with four byte-buffer types
+  (encapsulation key, decapsulation key, ciphertext, shared secret). If our Rust
+  → WASM → TS pipeline has surprises, we discover them on the simplest possible
+  API.
+- **Highest priority for KeyPears.** Encrypted messages stored anywhere are
+  vulnerable to harvest-now-decrypt-later if quantum computers arrive.
+  Signatures only matter prospectively. So if work stalls partway through this
+  issue, ML-KEM is the piece that has to land first.
+
+### Design decisions
+
+**Deterministic API.** `wasm32-unknown-unknown` has no entropy source. Rather
+than wiring up `getrandom` to use `crypto.getRandomValues` (extra glue, more
+moving parts), we expose deterministic functions that take 32-byte seeds as
+input. The TypeScript layer is responsible for sourcing entropy via
+`crypto.getRandomValues` and passing it down. This matches the pattern in
+`webbuf_p256` (callers manage their own randomness) and is cleaner for a
+primitives library.
+
+**All three parameter sets.** Ship ML-KEM-512, ML-KEM-768, and ML-KEM-1024 in
+the same package. Code cost is low (the RustCrypto crate parameterizes via
+generic-const; each level is a few lines of glue) and consumers shouldn't have
+to install separate packages for security-level choice.
+
+**Concatenated output buffers.** WASM-bindgen returns `Vec<u8>` cleanly but
+multi-return is awkward. Functions that produce multiple outputs (keygen returns
+ek + dk; encapsulate returns ct + ss) concatenate the outputs and the TypeScript
+wrapper splits them at known offsets. This matches how `webbuf_p256` returns
+SEC1-encoded points.
+
+### Plan
+
+1. Look at the `ml-kem` 0.2.x API on docs.rs; pin the version.
+2. Write `rs/webbuf_mlkem/Cargo.toml` and `src/lib.rs` exposing six functions:
+   `ml_kem_{512,768,1024}_keypair_from_seed`,
+   `ml_kem_{512,768,1024}_encapsulate`, `ml_kem_{512,768,1024}_decapsulate`.
+   (Plus tests against NIST vectors at the Rust level.)
+3. Add `webbuf_mlkem` to the `rs/Cargo.toml` workspace.
+4. Run `wasm-pack-bundler.zsh`; confirm WASM size is reasonable.
+5. Scaffold `ts/npm-webbuf-mlkem/` mirroring `ts/npm-webbuf-blake3/`'s layout:
+   `package.json`, `tsconfig*.json`, `build-inline-wasm.ts`, `src/index.ts`,
+   `test/`. Add to `pnpm-workspace.yaml` if needed.
+6. Sync from Rust, build inline WASM, build TypeScript.
+7. Vendor a representative subset of NIST ACVP-Server ML-KEM test vectors into
+   `test/`. Write a `vitest` audit suite that exercises all three parameter sets
+   across keygen, encapsulate, and decapsulate.
+8. Run tests; record results, WASM size, and any pipeline gotchas.
+
+### Implementation
+
+Built `rs/webbuf_mlkem` (78 lines of Rust + 80 lines of round-trip tests via a
+`mlkem_impl!` declarative macro that emits `keypair`, `encapsulate`, and
+`decapsulate` functions per security level) and `ts/npm-webbuf-mlkem` (155 lines
+of TypeScript wrapping the WASM exports with `WebBuf` / `FixedBuf` types and a
+`splitKeypair` / `splitEncap` helper for the concatenated buffers).
+
+Pipeline gotchas discovered:
+
+- **`ml-kem` deterministic API is feature-gated.** The `B32`,
+  `EncapsulateDeterministic`, and `KemCore::generate_deterministic` items are
+  all behind `--features deterministic`. Without that feature, key generation
+  requires an `RngCore` which is awkward for `wasm32-unknown-unknown`. Fix:
+  `ml-kem = { version = "0.2.3", features = ["deterministic"] }`.
+- **Trait import locations.** `EncapsulateDeterministic` re-exports from the
+  crate root (`ml_kem::EncapsulateDeterministic`), but `Decapsulate` lives in
+  `ml_kem::kem::Decapsulate`. Easy to get wrong from docs alone.
+- **Compiler can't infer encapsulate return types.** The
+  `EncapsulateDeterministic::encapsulate_deterministic` impl returns a
+  `Result<(EK, SS), Error>` where `EK` and `SS` are generic. The compiler needs
+  an explicit type annotation:
+  `let (ct, ss): (ml_kem::Ciphertext<$kem>, ml_kem::SharedKey<$kem>) = ...`.
+- **`hybrid_array::ArraySize` has no `SIZE` constant.** Use
+  `Encoded::<T>::default().len()` for runtime size lookup instead.
+
+None of these blocked progress; total scaffolding time was about an hour
+including reading the `ml-kem` docs.
+
+### Result: Pass
+
+**Rust:** 5/5 unit tests pass (round-trip for all three parameter sets, plus
+input validation). `cargo check` and `wasm-pack build --target bundler` both
+clean.
+
+**WASM size:** 89KB raw, 119KB after base64 inlining. Comparable to
+`@webbuf/blake3` and well within the budget for a synchronous-load TypeScript
+package.
+
+**TypeScript:** typecheck passes, `pnpm run build` produces a clean `dist/`, and
+the test suite reports:
+
+```
+✓ test/index.test.ts (5 tests) 6ms
+✓ test/audit.test.ts (180 tests) 25ms
+
+Test Files  2 passed (2)
+     Tests  185 passed (185)
+```
+
+The 180 audit tests exercise the official NIST ACVP-Server FIPS 203 vectors
+(commit `65370b8`) — 25 keyGen tests × 3 parameter sets = 75 keyGen, 25
+encapsulation tests × 3 = 75 encap, 10 decapsulation tests × 3 = 30 decap. **All
+180 NIST vectors match exactly.** Total runtime 32ms.
+
+The pipeline works end-to-end. Confidence is high that ML-DSA and SLH-DSA will
+follow the same template with similar effort. The base64-inline pattern that
+gives WebBuf its synchronous-load story works fine for PQC payloads — even
+ML-KEM-1024's larger keys round-trip through WASM cleanly.
+
+Next experiment: scaffold `@webbuf/mldsa` (ML-DSA / FIPS 204) using the same
+template, with `ml-dsa = ">=0.1.0-rc.8"` pinned per Experiment 2's findings, and
+validate against NIST ACVP ML-DSA test vectors.
