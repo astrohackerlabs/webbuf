@@ -2,14 +2,17 @@
 
 ## Project Overview
 
-WebBuf is a dual Rust/TypeScript monorepo providing high-performance buffer manipulation and cryptography for web environments. The core concept is:
+WebBuf is a dual Rust/TypeScript monorepo providing high-performance buffer
+manipulation and cryptography for web environments. The core concept is:
 
 1. Write or wrap cryptographic algorithms in **Rust**
 2. Compile Rust to **WebAssembly (WASM)**
 3. Inline the WASM as base64 into **TypeScript** packages
 4. Publish as npm packages with the `@webbuf/` scope
 
-The project provides a common buffer format called `WebBuf` (extends `Uint8Array`) and `FixedBuf<N>` (fixed-size buffer container, commonly 32 bytes for hashes).
+The project provides a common buffer format called `WebBuf` (extends
+`Uint8Array`) and `FixedBuf<N>` (fixed-size buffer container, commonly 32 bytes
+for hashes).
 
 ## Repository Structure
 
@@ -22,7 +25,10 @@ webbuf/
 │   ├── webbuf_sha256/           # SHA-256 hashing and HMAC-SHA256
 │   ├── webbuf_ripemd160/        # RIPEMD160 hashing
 │   ├── webbuf_secp256k1/        # Elliptic curve cryptography
-│   └── webbuf_aescbc/           # AES-CBC encryption
+│   ├── webbuf_aescbc/           # AES-CBC encryption
+│   ├── webbuf_mlkem/            # ML-KEM (FIPS 203) post-quantum KEM
+│   ├── webbuf_mldsa/            # ML-DSA (FIPS 204) post-quantum signatures
+│   └── webbuf_slhdsa/           # SLH-DSA (FIPS 205) hash-based PQC signatures
 │
 ├── ts/                          # TypeScript pnpm monorepo
 │   ├── package.json             # Workspace root
@@ -41,6 +47,9 @@ webbuf/
 │   ├── npm-webbuf-aescbc/       # AES-CBC wrapper (@webbuf/aescbc)
 │   ├── npm-webbuf-acb3/         # Combined crypto (@webbuf/acb3)
 │   ├── npm-webbuf-acb3dh/       # DH crypto (@webbuf/acb3dh)
+│   ├── npm-webbuf-mlkem/        # ML-KEM wrapper (@webbuf/mlkem)
+│   ├── npm-webbuf-mldsa/        # ML-DSA wrapper (@webbuf/mldsa)
+│   ├── npm-webbuf-slhdsa/       # SLH-DSA wrapper (@webbuf/slhdsa)
 │   └── npm-webbuf/              # Main package re-exporting all (webbuf)
 │
 ├── issues/                      # Issue tracking (see "Issues and experiments")
@@ -52,13 +61,16 @@ webbuf/
 ## Languages & Tools
 
 ### Rust
+
 - **Edition**: 2021
 - **WASM Target**: `wasm32-unknown-unknown`
 - **Build Tool**: `wasm-pack` (target: bundler)
 - **FFI**: `wasm-bindgen 0.2`
-- **Key Pattern**: Conditional WASM export via `#[cfg_attr(feature = "wasm", wasm_bindgen)]`
+- **Key Pattern**: Conditional WASM export via
+  `#[cfg_attr(feature = "wasm", wasm_bindgen)]`
 
 ### TypeScript
+
 - **Version**: 5.7.3
 - **Target**: ES2022
 - **Module**: ESNext (ESM only)
@@ -84,6 +96,7 @@ rm build/bundler/README.md
 ```
 
 This produces in `rs/<package>/build/bundler/`:
+
 - `<name>.js` - JavaScript bindings
 - `<name>_bg.js` - Background bindings
 - `<name>_bg.wasm` - Binary WASM file
@@ -97,7 +110,8 @@ In the TypeScript package's `package.json`:
 "sync:from-rust": "cp -r ../../rs/webbuf_blake3/build/bundler/* src/rs-webbuf_blake3-bundler/"
 ```
 
-The bundler output is copied to `src/rs-<name>-bundler/` in the TypeScript package.
+The bundler output is copied to `src/rs-<name>-bundler/` in the TypeScript
+package.
 
 ### Step 3: Inline WASM as Base64
 
@@ -109,6 +123,7 @@ Each TypeScript WASM package has a `build-inline-wasm.ts` script that:
 4. Outputs to `src/rs-<name>-inline-base64/`
 
 The inline module structure:
+
 ```javascript
 import * as <name>_bg from './<name>_bg.js';
 const wasmBase64 = "<base64-encoded-wasm>";
@@ -119,11 +134,17 @@ const wasm = new WebAssembly.Instance(wasmModule, importObject).exports;
 export { wasm };
 ```
 
-**Why inline as base64?** This enables synchronous WASM loading. Normally, loading a `.wasm` file requires async operations (`fetch`, `WebAssembly.instantiateStreaming`). By inlining as base64, we can use `new WebAssembly.Module()` and `new WebAssembly.Instance()` which are synchronous. This means webbuf packages behave like normal JavaScript libraries - no async imports, no top-level await required.
+**Why inline as base64?** This enables synchronous WASM loading. Normally,
+loading a `.wasm` file requires async operations (`fetch`,
+`WebAssembly.instantiateStreaming`). By inlining as base64, we can use
+`new WebAssembly.Module()` and `new WebAssembly.Instance()` which are
+synchronous. This means webbuf packages behave like normal JavaScript
+libraries - no async imports, no top-level await required.
 
 ### Step 4: Wrap with TypeScript
 
-The TypeScript wrapper imports from the inline module and provides type-safe APIs:
+The TypeScript wrapper imports from the inline module and provides type-safe
+APIs:
 
 ```typescript
 // Example: ts/npm-webbuf-blake3/src/index.ts
@@ -159,7 +180,9 @@ Each TypeScript package follows this script pattern:
 }
 ```
 
-Note: ESLint and Prettier configs are shared at the `ts/` workspace root. Each package references the root `.prettierignore` via `--ignore-path ../.prettierignore`.
+Note: ESLint and Prettier configs are shared at the `ts/` workspace root. Each
+package references the root `.prettierignore` via
+`--ignore-path ../.prettierignore`.
 
 ## Core Types
 
@@ -169,17 +192,17 @@ Extends `Uint8Array` with additional methods:
 
 ```typescript
 class WebBuf extends Uint8Array {
-  static alloc(size: number): WebBuf
-  static fromUint8Array(arr: Uint8Array): WebBuf
-  static fromHex(hex: string): WebBuf
-  static fromBase64(b64: string): WebBuf
-  static concat(bufs: WebBuf[]): WebBuf
+  static alloc(size: number): WebBuf;
+  static fromUint8Array(arr: Uint8Array): WebBuf;
+  static fromHex(hex: string): WebBuf;
+  static fromBase64(b64: string): WebBuf;
+  static concat(bufs: WebBuf[]): WebBuf;
 
-  toHex(): string
-  toBase64(): string
-  clone(): WebBuf
-  compare(other: WebBuf): number
-  equals(other: WebBuf): boolean
+  toHex(): string;
+  toBase64(): string;
+  clone(): WebBuf;
+  compare(other: WebBuf): number;
+  equals(other: WebBuf): boolean;
 }
 ```
 
@@ -189,16 +212,16 @@ Type-safe fixed-size buffer wrapper:
 
 ```typescript
 class FixedBuf<N extends number> {
-  static alloc<N extends number>(size: N): FixedBuf<N>
-  static fromBuf<N extends number>(size: N, buf: WebBuf): FixedBuf<N>
-  static fromHex<N extends number>(size: N, hex: string): FixedBuf<N>
-  static fromBase64<N extends number>(size: N, b64: string): FixedBuf<N>
-  static fromRandom<N extends number>(size: N): FixedBuf<N>
+  static alloc<N extends number>(size: N): FixedBuf<N>;
+  static fromBuf<N extends number>(size: N, buf: WebBuf): FixedBuf<N>;
+  static fromHex<N extends number>(size: N, hex: string): FixedBuf<N>;
+  static fromBase64<N extends number>(size: N, b64: string): FixedBuf<N>;
+  static fromRandom<N extends number>(size: N): FixedBuf<N>;
 
-  get buf(): WebBuf
-  toHex(): string
-  toBase64(): string
-  clone(): FixedBuf<N>
+  get buf(): WebBuf;
+  toHex(): string;
+  toBase64(): string;
+  clone(): FixedBuf<N>;
 }
 ```
 
@@ -208,23 +231,23 @@ Sequential buffer I/O with position tracking:
 
 ```typescript
 class BufReader {
-  constructor(buf: WebBuf)
-  readU8(): U8
-  readU16BE(): U16BE
-  readU32BE(): U32BE
-  readU64BE(): U64BE
-  readFixed<N>(size: N): FixedBuf<N>
-  readVarIntU64BE(): U64BE
+  constructor(buf: WebBuf);
+  readU8(): U8;
+  readU16BE(): U16BE;
+  readU32BE(): U32BE;
+  readU64BE(): U64BE;
+  readFixed<N>(size: N): FixedBuf<N>;
+  readVarIntU64BE(): U64BE;
 }
 
 class BufWriter {
-  constructor()
-  writeU8(val: U8): void
-  writeU16BE(val: U16BE): void
-  writeU32BE(val: U32BE): void
-  writeU64BE(val: U64BE): void
-  writeFixed<N>(buf: FixedBuf<N>): void
-  toBuf(): WebBuf
+  constructor();
+  writeU8(val: U8): void;
+  writeU16BE(val: U16BE): void;
+  writeU32BE(val: U32BE): void;
+  writeU64BE(val: U64BE): void;
+  writeFixed<N>(buf: FixedBuf<N>): void;
+  toBuf(): WebBuf;
 }
 ```
 
@@ -289,12 +312,15 @@ mkdir webbuf_<name>
 ```
 
 Create files:
+
 - `Cargo.toml` (follow template above)
-- `src/lib.rs` (implement functions with `#[cfg_attr(feature = "wasm", wasm_bindgen)]`)
+- `src/lib.rs` (implement functions with
+  `#[cfg_attr(feature = "wasm", wasm_bindgen)]`)
 - `wasm-pack-bundler.zsh` (copy from existing package)
 - `LICENSE` (MIT)
 
 Add to workspace in `rs/Cargo.toml`:
+
 ```toml
 [workspace]
 members = [
@@ -319,6 +345,7 @@ mkdir npm-webbuf-<name>
 ```
 
 Create structure:
+
 ```
 npm-webbuf-<name>/
 ├── package.json
@@ -345,14 +372,28 @@ pnpm test
 ## Dependencies Reference
 
 ### Rust Crypto Libraries
+
 - `blake3` - BLAKE3 hashing
 - `sha2` - SHA-256 hashing (from RustCrypto)
 - `hmac` - HMAC implementation (from RustCrypto, used with sha2)
 - `ripemd` - RIPEMD160 hashing
 - `k256` - secp256k1 elliptic curves (from RustCrypto)
+- `p256` - P-256 elliptic curves (from RustCrypto)
 - `aes` - AES encryption
+- `ml-kem` - ML-KEM / FIPS 203 post-quantum KEM (from RustCrypto, pinned
+  `=0.2.3`, `deterministic` feature)
+- `ml-dsa` - ML-DSA / FIPS 204 post-quantum signatures (from RustCrypto, pinned
+  `=0.1.0-rc.8`)
+- `slh-dsa` - SLH-DSA / FIPS 205 hash-based post-quantum signatures (from
+  RustCrypto, pinned `=0.2.0-rc.4`)
+
+> **PQC pinning rationale:** All three RustCrypto PQC crates are pre-1.0
+> (`0.x.0-rc.N`). `ml-dsa` had a cluster of CVE-class advisories landing Dec
+> 2025 – Mar 2026, all fixed by rc.8. We pin exact versions to avoid surprise
+> upgrades and track RUSTSEC. See `issues/0001-post-quantum`.
 
 ### TypeScript Dev Dependencies
+
 - `eslint` - Linting
 - `@eslint/js` - ESLint core rules
 - `typescript-eslint` - TypeScript ESLint plugin
@@ -367,18 +408,21 @@ pnpm test
 ## Testing
 
 ### Rust Tests
+
 ```bash
 cd rs/webbuf_<name>
 cargo test
 ```
 
 ### TypeScript Tests
+
 ```bash
 cd ts/npm-webbuf-<name>
 pnpm test
 ```
 
 ### All TypeScript Packages
+
 ```bash
 cd ts
 pnpm test
@@ -387,6 +431,7 @@ pnpm test
 ## Publishing
 
 NPM packages are published under the `@webbuf/` scope:
+
 - `@webbuf/webbuf` - Core buffer
 - `@webbuf/fixedbuf` - Fixed-size buffers
 - `@webbuf/numbers` - Numeric types
@@ -398,6 +443,9 @@ NPM packages are published under the `@webbuf/` scope:
 - `@webbuf/aescbc` - AES-CBC encryption
 - `@webbuf/acb3` - AES-CBC + BLAKE3 MAC
 - `@webbuf/acb3dh` - AES-CBC + BLAKE3 + secp256k1 Diffie-Hellman
+- `@webbuf/mlkem` - ML-KEM (FIPS 203) post-quantum key encapsulation
+- `@webbuf/mldsa` - ML-DSA (FIPS 204) post-quantum signatures
+- `@webbuf/slhdsa` - SLH-DSA (FIPS 205) hash-based post-quantum signatures
 - `webbuf` - Main package (re-exports core utilities)
 
 The `prepublishOnly` script ensures clean builds before publishing.
@@ -407,12 +455,14 @@ The `prepublishOnly` script ensures clean builds before publishing.
 - **Rust workspace version**: `0.12.95` (in `rs/Cargo.toml`)
 - **TypeScript version**: `3.0.28` (in each `package.json`)
 
-Versions are managed independently but should be updated together when making releases.
+Versions are managed independently but should be updated together when making
+releases.
 
 ## Code Style
 
 - **Rust**: Standard Rust formatting (`cargo fmt`)
-- **TypeScript**: ESLint with strict type-checked rules + Prettier with default settings
+- **TypeScript**: ESLint with strict type-checked rules + Prettier with default
+  settings
 - **No emojis** unless explicitly requested
 - **Strict TypeScript** mode enabled
 - **ESM only** - no CommonJS

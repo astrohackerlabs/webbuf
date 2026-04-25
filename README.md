@@ -19,33 +19,37 @@ npm install @webbuf/webbuf @webbuf/fixedbuf @webbuf/sha256 # etc.
 
 ## Package Overview
 
-| Package | Description |
-| --- | --- |
-| **Core** | |
-| `@webbuf/webbuf` | Core `WebBuf` class - extended Uint8Array with hex/base64/base32 encoding |
-| `@webbuf/fixedbuf` | `FixedBuf<N>` - compile-time sized buffer wrapper |
-| `@webbuf/numbers` | Fixed-size integers (U8, U16BE, U32LE, U64BE, U128, U256, etc.) |
-| `@webbuf/rw` | `BufReader` and `BufWriter` for sequential binary I/O |
-| **Hashing** | |
-| `@webbuf/blake3` | BLAKE3 hash and keyed MAC |
-| `@webbuf/sha256` | SHA-256 hash and HMAC-SHA256 |
-| `@webbuf/ripemd160` | RIPEMD-160 hash |
-| **Key Derivation** | |
-| `@webbuf/pbkdf2-sha256` | PBKDF2-HMAC-SHA256 password-based key derivation |
-| **Elliptic Curves** | |
-| `@webbuf/secp256k1` | secp256k1 ECDSA signatures and ECDH key exchange |
-| `@webbuf/p256` | P-256 (NIST) ECDSA signatures and ECDH key exchange |
-| **Encryption (CBC)** | |
-| `@webbuf/aescbc` | AES-CBC encryption (no authentication) |
-| `@webbuf/acb3` | AES-CBC + BLAKE3 MAC (authenticated encryption) |
-| `@webbuf/acs2` | AES-CBC + SHA-256 HMAC (authenticated encryption) |
-| `@webbuf/acb3dh` | ACB3 + secp256k1 ECDH key exchange |
-| `@webbuf/acs2dh` | ACS2 + secp256k1 ECDH key exchange |
-| `@webbuf/acb3p256dh` | ACB3 + P-256 ECDH key exchange |
-| `@webbuf/acs2p256dh` | ACS2 + P-256 ECDH key exchange |
-| **Encryption (GCM)** | |
-| `@webbuf/aesgcm` | AES-GCM authenticated encryption (AEAD) |
-| `@webbuf/aesgcm-p256dh` | AES-GCM + P-256 ECDH + SHA-256 key derivation (fully NIST-approved) |
+| Package                 | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| **Core**                |                                                                               |
+| `@webbuf/webbuf`        | Core `WebBuf` class - extended Uint8Array with hex/base64/base32 encoding     |
+| `@webbuf/fixedbuf`      | `FixedBuf<N>` - compile-time sized buffer wrapper                             |
+| `@webbuf/numbers`       | Fixed-size integers (U8, U16BE, U32LE, U64BE, U128, U256, etc.)               |
+| `@webbuf/rw`            | `BufReader` and `BufWriter` for sequential binary I/O                         |
+| **Hashing**             |                                                                               |
+| `@webbuf/blake3`        | BLAKE3 hash and keyed MAC                                                     |
+| `@webbuf/sha256`        | SHA-256 hash and HMAC-SHA256                                                  |
+| `@webbuf/ripemd160`     | RIPEMD-160 hash                                                               |
+| **Key Derivation**      |                                                                               |
+| `@webbuf/pbkdf2-sha256` | PBKDF2-HMAC-SHA256 password-based key derivation                              |
+| **Elliptic Curves**     |                                                                               |
+| `@webbuf/secp256k1`     | secp256k1 ECDSA signatures and ECDH key exchange                              |
+| `@webbuf/p256`          | P-256 (NIST) ECDSA signatures and ECDH key exchange                           |
+| **Encryption (CBC)**    |                                                                               |
+| `@webbuf/aescbc`        | AES-CBC encryption (no authentication)                                        |
+| `@webbuf/acb3`          | AES-CBC + BLAKE3 MAC (authenticated encryption)                               |
+| `@webbuf/acs2`          | AES-CBC + SHA-256 HMAC (authenticated encryption)                             |
+| `@webbuf/acb3dh`        | ACB3 + secp256k1 ECDH key exchange                                            |
+| `@webbuf/acs2dh`        | ACS2 + secp256k1 ECDH key exchange                                            |
+| `@webbuf/acb3p256dh`    | ACB3 + P-256 ECDH key exchange                                                |
+| `@webbuf/acs2p256dh`    | ACS2 + P-256 ECDH key exchange                                                |
+| **Encryption (GCM)**    |                                                                               |
+| `@webbuf/aesgcm`        | AES-GCM authenticated encryption (AEAD)                                       |
+| `@webbuf/aesgcm-p256dh` | AES-GCM + P-256 ECDH + SHA-256 key derivation (fully NIST-approved)           |
+| **Post-Quantum (NIST)** |                                                                               |
+| `@webbuf/mlkem`         | ML-KEM (FIPS 203) post-quantum key encapsulation — 512/768/1024               |
+| `@webbuf/mldsa`         | ML-DSA (FIPS 204) post-quantum signatures — 44/65/87                          |
+| `@webbuf/slhdsa`        | SLH-DSA (FIPS 205) hash-based post-quantum signatures — all 12 parameter sets |
 
 ---
 
@@ -61,19 +65,19 @@ Rust/WASM for performance.
 import { WebBuf } from "@webbuf/webbuf";
 
 // Creating buffers
-const buf1 = WebBuf.alloc(32);                    // 32 zero bytes
-const buf2 = WebBuf.alloc(16, 0xff);              // 16 bytes of 0xff
-const buf3 = WebBuf.fromHex("deadbeef");          // From hex string
-const buf4 = WebBuf.fromBase64("SGVsbG8=");       // From base64
-const buf5 = WebBuf.fromUtf8("Hello");            // From UTF-8 string
-const buf6 = WebBuf.fromArray([1, 2, 3, 4]);      // From number array
-const buf7 = WebBuf.fromBase32("91JPRV3F");       // From base32 (Crockford default)
+const buf1 = WebBuf.alloc(32); // 32 zero bytes
+const buf2 = WebBuf.alloc(16, 0xff); // 16 bytes of 0xff
+const buf3 = WebBuf.fromHex("deadbeef"); // From hex string
+const buf4 = WebBuf.fromBase64("SGVsbG8="); // From base64
+const buf5 = WebBuf.fromUtf8("Hello"); // From UTF-8 string
+const buf6 = WebBuf.fromArray([1, 2, 3, 4]); // From number array
+const buf7 = WebBuf.fromBase32("91JPRV3F"); // From base32 (Crockford default)
 
 // Converting to strings
-buf3.toHex();     // "deadbeef"
-buf4.toBase64();  // "SGVsbG8="
-buf5.toUtf8();    // "Hello"
-buf7.toBase32();  // "91JPRV3F" (Crockford default)
+buf3.toHex(); // "deadbeef"
+buf4.toBase64(); // "SGVsbG8="
+buf5.toUtf8(); // "Hello"
+buf7.toBase32(); // "91JPRV3F" (Crockford default)
 
 // Buffer operations
 const combined = WebBuf.concat([buf1, buf2, buf3]);
@@ -82,22 +86,22 @@ const reversed = buf1.toReverse();
 const slice = buf1.slice(0, 16);
 
 // Comparison
-buf1.equals(buf2);   // false
-buf1.compare(buf2);  // -1, 0, or 1
+buf1.equals(buf2); // false
+buf1.compare(buf2); // -1, 0, or 1
 ```
 
 **Key Methods:**
 
-| Static Methods               | Description                   |
-| ---------------------------- | ----------------------------- |
-| `WebBuf.alloc(size, fill?)`  | Create buffer of given size   |
-| `WebBuf.concat(buffers[])`   | Concatenate multiple buffers  |
-| `WebBuf.fromHex(hex)`        | Parse hex string to buffer    |
-| `WebBuf.fromBase64(b64)`     | Parse base64 string to buffer |
+| Static Methods                  | Description                   |
+| ------------------------------- | ----------------------------- |
+| `WebBuf.alloc(size, fill?)`     | Create buffer of given size   |
+| `WebBuf.concat(buffers[])`      | Concatenate multiple buffers  |
+| `WebBuf.fromHex(hex)`           | Parse hex string to buffer    |
+| `WebBuf.fromBase64(b64)`        | Parse base64 string to buffer |
 | `WebBuf.fromBase32(str, opts?)` | Parse base32 string to buffer |
-| `WebBuf.fromUtf8(str)`       | Encode UTF-8 string to buffer |
-| `WebBuf.fromArray(nums[])`   | Create from number array      |
-| `WebBuf.fromUint8Array(arr)` | Create from Uint8Array        |
+| `WebBuf.fromUtf8(str)`          | Encode UTF-8 string to buffer |
+| `WebBuf.fromArray(nums[])`      | Create from number array      |
+| `WebBuf.fromUint8Array(arr)`    | Create from Uint8Array        |
 
 | Instance Methods         | Description                   |
 | ------------------------ | ----------------------------- |
@@ -124,23 +128,23 @@ keys, 64-byte signatures, etc.).
 import { FixedBuf } from "@webbuf/fixedbuf";
 
 // Creating fixed-size buffers
-const key = FixedBuf.alloc<32>(32);                           // 32 zero bytes
-const iv = FixedBuf.alloc<16>(16, 0xff);                      // 16 bytes of 0xff
-const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea...");  // From hex (must be exactly 32 bytes)
-const random = FixedBuf.fromRandom<32>(32);                   // 32 cryptographically random bytes
+const key = FixedBuf.alloc<32>(32); // 32 zero bytes
+const iv = FixedBuf.alloc<16>(16, 0xff); // 16 bytes of 0xff
+const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea..."); // From hex (must be exactly 32 bytes)
+const random = FixedBuf.fromRandom<32>(32); // 32 cryptographically random bytes
 
 // Shortcut
-const key = FixedBuf.alloc(32);                           // 32 zero bytes
-const iv = FixedBuf.alloc(16, 0xff);                      // 16 bytes of 0xff
-const hash = FixedBuf.fromHex(32, "ba7816bf8f01cfea...");  // From hex (must be exactly 32 bytes)
-const random = FixedBuf.fromRandom(32);                   // 32 cryptographically random bytes
+const key = FixedBuf.alloc(32); // 32 zero bytes
+const iv = FixedBuf.alloc(16, 0xff); // 16 bytes of 0xff
+const hash = FixedBuf.fromHex(32, "ba7816bf8f01cfea..."); // From hex (must be exactly 32 bytes)
+const random = FixedBuf.fromRandom(32); // 32 cryptographically random bytes
 
 // Access underlying WebBuf
 const webBuf: WebBuf = key.buf;
 
 // Converting to strings
-hash.toHex();     // Returns hex string
-hash.toBase64();  // Returns base64 string
+hash.toHex(); // Returns hex string
+hash.toBase64(); // Returns base64 string
 
 // Clone and reverse
 const cloned = key.clone();
@@ -149,14 +153,14 @@ const reversed = key.toReverse();
 
 **Key Methods:**
 
-| Static Methods                      | Description                         |
-| ----------------------------------- | ----------------------------------- |
-| `FixedBuf.alloc<N>(size, fill?)`    | Create fixed buffer of size N       |
-| `FixedBuf.fromBuf<N>(size, webBuf)` | Wrap WebBuf (throws if wrong size)  |
-| `FixedBuf.fromHex<N>(size, hex)`    | Parse hex (throws if wrong size)    |
-| `FixedBuf.fromBase64(size, b64)`    | Parse base64 (throws if wrong size) |
+| Static Methods                          | Description                         |
+| --------------------------------------- | ----------------------------------- |
+| `FixedBuf.alloc<N>(size, fill?)`        | Create fixed buffer of size N       |
+| `FixedBuf.fromBuf<N>(size, webBuf)`     | Wrap WebBuf (throws if wrong size)  |
+| `FixedBuf.fromHex<N>(size, hex)`        | Parse hex (throws if wrong size)    |
+| `FixedBuf.fromBase64(size, b64)`        | Parse base64 (throws if wrong size) |
 | `FixedBuf.fromBase32(size, str, opts?)` | Parse base32 (throws if wrong size) |
-| `FixedBuf.fromRandom<N>(size)`      | Generate N random bytes             |
+| `FixedBuf.fromRandom<N>(size)`          | Generate N random bytes             |
 
 | Instance Properties/Methods | Description              |
 | --------------------------- | ------------------------ |
@@ -186,7 +190,17 @@ Fixed-size unsigned integers with big-endian (BE) and little-endian (LE)
 variants. All types follow the same pattern.
 
 ```typescript
-import { U8, U16BE, U16LE, U32BE, U32LE, U64BE, U64LE, U128BE, U256BE } from "@webbuf/numbers";
+import {
+  U8,
+  U16BE,
+  U16LE,
+  U32BE,
+  U32LE,
+  U64BE,
+  U64LE,
+  U128BE,
+  U256BE,
+} from "@webbuf/numbers";
 
 // Create from number or bigint
 const a = U32BE.fromN(1000);
@@ -199,17 +213,17 @@ const product = a.mul(U32BE.fromN(2));
 const quotient = a.div(U32BE.fromN(10));
 
 // Access value
-a.n;   // As number
-a.bn;  // As bigint
+a.n; // As number
+a.bn; // As bigint
 
 // Buffer conversion
-const beBuf = a.toBEBuf();  // FixedBuf in big-endian
-const leBuf = a.toLEBuf();  // FixedBuf in little-endian
+const beBuf = a.toBEBuf(); // FixedBuf in big-endian
+const leBuf = a.toLEBuf(); // FixedBuf in little-endian
 const restored = U32BE.fromBEBuf(beBuf);
 
 // Hex conversion
-a.toHex();                      // "000003e8"
-U32BE.fromHex("000003e8");      // Parse hex
+a.toHex(); // "000003e8"
+U32BE.fromHex("000003e8"); // Parse hex
 ```
 
 **Available Types:**
@@ -248,8 +262,8 @@ const reader = new BufReader(result);
 const u8 = reader.readU8();
 const u32 = reader.readU32BE();
 const fixed = reader.readFixed<32>(32);
-reader.eof();        // true if at end
-reader.remainder();  // remaining bytes
+reader.eof(); // true if at end
+reader.remainder(); // remaining bytes
 ```
 
 ---
@@ -262,11 +276,11 @@ reader.remainder();  // remaining bytes
 import { blake3Hash, doubleBlake3Hash, blake3Mac } from "@webbuf/blake3";
 
 const data = WebBuf.fromUtf8("Hello");
-const hash = blake3Hash(data);              // FixedBuf<32>
-const double = doubleBlake3Hash(data);      // FixedBuf<32>
+const hash = blake3Hash(data); // FixedBuf<32>
+const double = doubleBlake3Hash(data); // FixedBuf<32>
 
 const key = FixedBuf.fromRandom<32>(32);
-const mac = blake3Mac(key, data);           // FixedBuf<32>
+const mac = blake3Mac(key, data); // FixedBuf<32>
 ```
 
 ### SHA-256 (@webbuf/sha256)
@@ -275,11 +289,11 @@ const mac = blake3Mac(key, data);           // FixedBuf<32>
 import { sha256Hash, doubleSha256Hash, sha256Hmac } from "@webbuf/sha256";
 
 const data = WebBuf.fromUtf8("abc");
-const hash = sha256Hash(data);              // FixedBuf<32>
-const double = doubleSha256Hash(data);      // FixedBuf<32> (used in Bitcoin)
+const hash = sha256Hash(data); // FixedBuf<32>
+const double = doubleSha256Hash(data); // FixedBuf<32> (used in Bitcoin)
 
 const key = WebBuf.fromUtf8("secret");
-const hmac = sha256Hmac(key, data);         // FixedBuf<32>
+const hmac = sha256Hmac(key, data); // FixedBuf<32>
 ```
 
 ### RIPEMD-160 (@webbuf/ripemd160)
@@ -288,8 +302,8 @@ const hmac = sha256Hmac(key, data);         // FixedBuf<32>
 import { ripemd160Hash, doubleRipemd160Hash } from "@webbuf/ripemd160";
 
 const data = WebBuf.fromUtf8("Hello");
-const hash = ripemd160Hash(data);           // FixedBuf<20>
-const double = doubleRipemd160Hash(data);   // FixedBuf<20>
+const hash = ripemd160Hash(data); // FixedBuf<20>
+const double = doubleRipemd160Hash(data); // FixedBuf<20>
 ```
 
 ### PBKDF2-HMAC-SHA256 (@webbuf/pbkdf2-sha256)
@@ -299,7 +313,7 @@ import { pbkdf2Sha256 } from "@webbuf/pbkdf2-sha256";
 
 const password = WebBuf.fromUtf8("my password");
 const salt = WebBuf.fromUtf8("random salt");
-const derivedKey = pbkdf2Sha256(password, salt, 100_000, 32);  // FixedBuf<32>
+const derivedKey = pbkdf2Sha256(password, salt, 100_000, 32); // FixedBuf<32>
 ```
 
 ---
@@ -312,57 +326,199 @@ ECDSA signatures and ECDH key exchange on the secp256k1 curve.
 
 ```typescript
 import {
-  privateKeyVerify, publicKeyVerify, publicKeyCreate,
-  privateKeyAdd, publicKeyAdd,
-  sign, verify, sharedSecret
+  privateKeyVerify,
+  publicKeyVerify,
+  publicKeyCreate,
+  privateKeyAdd,
+  publicKeyAdd,
+  sign,
+  verify,
+  sharedSecret,
 } from "@webbuf/secp256k1";
 
 // Key generation
 const privKey = FixedBuf.fromRandom<32>(32);
-privateKeyVerify(privKey);                    // true if valid
-const pubKey = publicKeyCreate(privKey);      // FixedBuf<33> (compressed)
-publicKeyVerify(pubKey);                      // true if valid
+privateKeyVerify(privKey); // true if valid
+const pubKey = publicKeyCreate(privKey); // FixedBuf<33> (compressed)
+publicKeyVerify(pubKey); // true if valid
 
 // Key addition (for HD wallets, stealth addresses, etc.)
-const combined = privateKeyAdd(privKey1, privKey2);  // FixedBuf<32>
-const combinedPub = publicKeyAdd(pubKey1, pubKey2);  // FixedBuf<33>
+const combined = privateKeyAdd(privKey1, privKey2); // FixedBuf<32>
+const combinedPub = publicKeyAdd(pubKey1, pubKey2); // FixedBuf<33>
 
 // Signing (requires 32-byte hash and 32-byte nonce k)
 const messageHash = sha256Hash(WebBuf.fromUtf8("message"));
-const k = FixedBuf.fromRandom<32>(32);  // Use RFC 6979 in production!
-const signature = sign(messageHash, privKey, k);  // FixedBuf<64>
+const k = FixedBuf.fromRandom<32>(32); // Use RFC 6979 in production!
+const signature = sign(messageHash, privKey, k); // FixedBuf<64>
 
 // Verification
-verify(signature, messageHash, pubKey);  // true if valid
+verify(signature, messageHash, pubKey); // true if valid
 
 // Diffie-Hellman shared secret
 const alicePriv = FixedBuf.fromRandom<32>(32);
 const bobPriv = FixedBuf.fromRandom<32>(32);
 const alicePub = publicKeyCreate(alicePriv);
 const bobPub = publicKeyCreate(bobPriv);
-const secretA = sharedSecret(alicePriv, bobPub);  // FixedBuf<33>
-const secretB = sharedSecret(bobPriv, alicePub);  // Same as secretA
+const secretA = sharedSecret(alicePriv, bobPub); // FixedBuf<33>
+const secretB = sharedSecret(bobPriv, alicePub); // Same as secretA
 ```
 
 ### P-256 / NIST (@webbuf/p256)
 
-ECDSA signatures and ECDH key exchange on the NIST P-256 curve. Same API shape as secp256k1, with `p256` prefix on all functions.
+ECDSA signatures and ECDH key exchange on the NIST P-256 curve. Same API shape
+as secp256k1, with `p256` prefix on all functions.
 
 ```typescript
 import {
-  p256PrivateKeyVerify, p256PublicKeyVerify, p256PublicKeyCreate,
-  p256PrivateKeyAdd, p256PublicKeyAdd,
-  p256Sign, p256Verify, p256SharedSecret
+  p256PrivateKeyVerify,
+  p256PublicKeyVerify,
+  p256PublicKeyCreate,
+  p256PrivateKeyAdd,
+  p256PublicKeyAdd,
+  p256Sign,
+  p256Verify,
+  p256SharedSecret,
 } from "@webbuf/p256";
 
 const privKey = FixedBuf.fromRandom<32>(32);
-const pubKey = p256PublicKeyCreate(privKey);          // FixedBuf<33>
+const pubKey = p256PublicKeyCreate(privKey); // FixedBuf<33>
 
-const signature = p256Sign(messageHash, privKey, k);  // FixedBuf<64>
-p256Verify(signature, messageHash, pubKey);            // true if valid
+const signature = p256Sign(messageHash, privKey, k); // FixedBuf<64>
+p256Verify(signature, messageHash, pubKey); // true if valid
 
-const shared = p256SharedSecret(alicePriv, bobPub);    // FixedBuf<33>
+const shared = p256SharedSecret(alicePriv, bobPub); // FixedBuf<33>
 ```
+
+---
+
+## Post-Quantum Cryptography
+
+WebBuf ships all three NIST-finalized post-quantum algorithms (FIPS 203, 204,
+205, finalized August 13, 2024). All three wrap the corresponding RustCrypto
+crates (`ml-kem`, `ml-dsa`, `slh-dsa`) and validate against the official NIST
+ACVP-Server test vectors.
+
+> **Audit posture:** No Rust PQC implementation has received a public
+> independent audit yet. The packages are appropriate for early adoption,
+> hybrid-with-classical deployments, and post-quantum readiness work — be aware
+> of the unaudited status if you ship them as the sole protection on sensitive
+> material.
+
+### ML-KEM (@webbuf/mlkem)
+
+Key encapsulation mechanism per FIPS 203 (formerly CRYSTALS-Kyber). Lattice-
+based; replaces ECDH for post-quantum key exchange. Three parameter sets:
+ML-KEM-512 (Category 1), ML-KEM-768 (Category 3), ML-KEM-1024 (Category 5).
+
+```typescript
+import {
+  mlKem768KeyPair,
+  mlKem768Encapsulate,
+  mlKem768Decapsulate,
+  ML_KEM_768,
+} from "@webbuf/mlkem";
+
+// Caller supplies entropy as 32-byte seeds (FIPS 203 deterministic API).
+const d = FixedBuf.fromRandom<32>(32);
+const z = FixedBuf.fromRandom<32>(32);
+const m = FixedBuf.fromRandom<32>(32);
+
+// Generate keypair
+const { encapsulationKey, decapsulationKey } = mlKem768KeyPair(d, z);
+// encapsulationKey: FixedBuf<1184>, decapsulationKey: FixedBuf<2400>
+
+// Encapsulate (sender side)
+const { ciphertext, sharedSecret } = mlKem768Encapsulate(encapsulationKey, m);
+// ciphertext: FixedBuf<1088>, sharedSecret: FixedBuf<32>
+
+// Decapsulate (recipient side) — recovers the same shared secret
+const recovered = mlKem768Decapsulate(decapsulationKey, ciphertext);
+// recovered.toHex() === sharedSecret.toHex()
+```
+
+ML-KEM-512 and ML-KEM-1024 follow the same shape with `mlKem512*` / `mlKem1024*`
+and the corresponding `ML_KEM_512` / `ML_KEM_1024` size constants.
+
+### ML-DSA (@webbuf/mldsa)
+
+Digital signatures per FIPS 204 (formerly CRYSTALS-Dilithium). Lattice-based;
+the default general-purpose post-quantum signature scheme. Three parameter sets:
+ML-DSA-44, ML-DSA-65, ML-DSA-87.
+
+```typescript
+import {
+  mlDsa65KeyPair,
+  mlDsa65SignInternal,
+  mlDsa65VerifyInternal,
+  ML_DSA_65,
+} from "@webbuf/mldsa";
+
+const seed = FixedBuf.fromRandom<32>(32);
+const rnd = FixedBuf.fromRandom<32>(32); // FIPS 204 hedged-mode randomness
+const message = WebBuf.fromUtf8("authenticated message");
+
+// KeyGen
+const { verifyingKey, signingKey } = mlDsa65KeyPair(seed);
+// verifyingKey: FixedBuf<1952>, signingKey: FixedBuf<4032>
+
+// Sign (FIPS 204 internal API — caller-supplied randomness)
+const signature = mlDsa65SignInternal(signingKey, message, rnd);
+// signature: FixedBuf<3309>
+
+// Verify
+mlDsa65VerifyInternal(verifyingKey, message, signature); // true
+```
+
+For deterministic signing per FIPS 204 §5.2, pass `rnd` as 32 zero bytes.
+ML-DSA-44 and ML-DSA-87 use the same API shape with `mlDsa44*` / `mlDsa87*`.
+
+### SLH-DSA (@webbuf/slhdsa)
+
+Hash-based digital signatures per FIPS 205 (formerly SPHINCS+). Security rests
+only on hash function strength — the conservative hedge against any structural
+break in lattice cryptography. All 12 parameter sets are exposed: SHA2 / SHAKE ×
+128 / 192 / 256-bit security × `s` (small signature, slow) / `f` (fast signing,
+larger signature).
+
+```typescript
+import {
+  slhDsaSha2_128fKeyPair,
+  slhDsaSha2_128fSignInternal,
+  slhDsaSha2_128fVerifyInternal,
+  SLH_DSA_SHA2_128F,
+} from "@webbuf/slhdsa";
+
+// FIPS 205 keygen takes three n-byte seeds (16 bytes for 128-bit, 24 for
+// 192-bit, 32 for 256-bit security)
+const skSeed = FixedBuf.fromRandom<16>(16);
+const skPrf = FixedBuf.fromRandom<16>(16);
+const pkSeed = FixedBuf.fromRandom<16>(16);
+const message = WebBuf.fromUtf8("hash-based signature");
+
+const { verifyingKey, signingKey } = slhDsaSha2_128fKeyPair(
+  skSeed,
+  skPrf,
+  pkSeed,
+);
+// verifyingKey: FixedBuf<32>, signingKey: FixedBuf<64>
+
+// Sign (deterministic mode — omit addrnd to use pkSeed as randomizer)
+const signature = slhDsaSha2_128fSignInternal(signingKey, message);
+// signature: FixedBuf<17088>
+
+slhDsaSha2_128fVerifyInternal(verifyingKey, message, signature); // true
+```
+
+The other 11 parameter sets follow the same `slhDsa{Sha2,Shake}_{NNN}{s,f}*`
+naming with corresponding size constants (`SLH_DSA_{SHA2,SHAKE}_{NNN}{S,F}`).
+
+**Tradeoffs at a glance:**
+
+| Variant           | Sig size  | Speed        | When to use                             |
+| ----------------- | --------- | ------------ | --------------------------------------- |
+| `s` (small)       | 7.9–30 KB | slow signing | Storage-constrained verifiers           |
+| `f` (fast)        | 17–50 KB  | fast signing | Bandwidth-constrained signers           |
+| 128 vs 192 vs 256 | varies    | varies       | Match to AES-equivalent security target |
 
 ---
 
@@ -376,12 +532,12 @@ encryption.
 ```typescript
 import { aescbcEncrypt, aescbcDecrypt } from "@webbuf/aescbc";
 
-const key = FixedBuf.fromRandom<32>(32);  // AES-256
-const iv = FixedBuf.fromRandom<16>(16);   // Optional, random if not provided
+const key = FixedBuf.fromRandom<32>(32); // AES-256
+const iv = FixedBuf.fromRandom<16>(16); // Optional, random if not provided
 const plaintext = WebBuf.fromUtf8("Secret");
 
-const ciphertext = aescbcEncrypt(plaintext, key, iv);  // IV prepended
-const decrypted = aescbcDecrypt(ciphertext, key);      // Extracts IV automatically
+const ciphertext = aescbcEncrypt(plaintext, key, iv); // IV prepended
+const decrypted = aescbcDecrypt(ciphertext, key); // Extracts IV automatically
 ```
 
 ### ACB3 - Authenticated Encryption (@webbuf/acb3)
@@ -418,7 +574,11 @@ const bobPriv = FixedBuf.fromRandom<32>(32);
 const bobPub = publicKeyCreate(bobPriv);
 
 // Alice encrypts to Bob
-const ciphertext = acb3dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"));
+const ciphertext = acb3dhEncrypt(
+  alicePriv,
+  bobPub,
+  WebBuf.fromUtf8("Hello Bob!"),
+);
 
 // Bob decrypts from Alice
 const plaintext = acb3dhDecrypt(bobPriv, alicePub, ciphertext);
@@ -464,7 +624,11 @@ const bobPriv = FixedBuf.fromRandom<32>(32);
 const bobPub = publicKeyCreate(bobPriv);
 
 // Alice encrypts to Bob
-const ciphertext = acs2dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"));
+const ciphertext = acs2dhEncrypt(
+  alicePriv,
+  bobPub,
+  WebBuf.fromUtf8("Hello Bob!"),
+);
 
 // Bob decrypts from Alice
 const plaintext = acs2dhDecrypt(bobPriv, alicePub, ciphertext);
@@ -472,7 +636,8 @@ const plaintext = acs2dhDecrypt(bobPriv, alicePub, ciphertext);
 
 ### P-256 DH Variants (@webbuf/acb3p256dh, @webbuf/acs2p256dh)
 
-Same as ACB3DH and ACS2DH, but using the P-256 (NIST) curve instead of secp256k1.
+Same as ACB3DH and ACS2DH, but using the P-256 (NIST) curve instead of
+secp256k1.
 
 ```typescript
 import { acb3p256dhEncrypt, acb3p256dhDecrypt } from "@webbuf/acb3p256dh";
@@ -484,7 +649,11 @@ const alicePub = p256PublicKeyCreate(alicePriv);
 const bobPriv = FixedBuf.fromRandom<32>(32);
 const bobPub = p256PublicKeyCreate(bobPriv);
 
-const ciphertext = acb3p256dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello!"));
+const ciphertext = acb3p256dhEncrypt(
+  alicePriv,
+  bobPub,
+  WebBuf.fromUtf8("Hello!"),
+);
 const plaintext = acb3p256dhDecrypt(bobPriv, alicePub, ciphertext);
 ```
 
@@ -495,19 +664,23 @@ AES-GCM authenticated encryption (AEAD). No separate MAC needed.
 ```typescript
 import { aesgcmEncrypt, aesgcmDecrypt } from "@webbuf/aesgcm";
 
-const key = FixedBuf.fromRandom<32>(32);  // AES-256
+const key = FixedBuf.fromRandom<32>(32); // AES-256
 const plaintext = WebBuf.fromUtf8("Secret");
 
-const ciphertext = aesgcmEncrypt(plaintext, key);  // Nonce prepended, tag appended
-const decrypted = aesgcmDecrypt(ciphertext, key);  // Verifies auth tag
+const ciphertext = aesgcmEncrypt(plaintext, key); // Nonce prepended, tag appended
+const decrypted = aesgcmDecrypt(ciphertext, key); // Verifies auth tag
 ```
 
 ### AES-GCM + P-256 DH (@webbuf/aesgcm-p256dh)
 
-Fully NIST-approved construction: P-256 ECDH + SHA-256 key derivation + AES-256-GCM.
+Fully NIST-approved construction: P-256 ECDH + SHA-256 key derivation +
+AES-256-GCM.
 
 ```typescript
-import { aesgcmP256dhEncrypt, aesgcmP256dhDecrypt } from "@webbuf/aesgcm-p256dh";
+import {
+  aesgcmP256dhEncrypt,
+  aesgcmP256dhDecrypt,
+} from "@webbuf/aesgcm-p256dh";
 import { p256PublicKeyCreate } from "@webbuf/p256";
 
 const alicePriv = FixedBuf.fromRandom<32>(32);
@@ -515,7 +688,11 @@ const alicePub = p256PublicKeyCreate(alicePriv);
 const bobPriv = FixedBuf.fromRandom<32>(32);
 const bobPub = p256PublicKeyCreate(bobPriv);
 
-const ciphertext = aesgcmP256dhEncrypt(alicePriv, bobPub, WebBuf.fromUtf8("Hello Bob!"));
+const ciphertext = aesgcmP256dhEncrypt(
+  alicePriv,
+  bobPub,
+  WebBuf.fromUtf8("Hello Bob!"),
+);
 const plaintext = aesgcmP256dhDecrypt(bobPriv, alicePub, ciphertext);
 ```
 
@@ -528,11 +705,14 @@ const plaintext = aesgcmP256dhDecrypt(bobPriv, alicePub, ciphertext);
 ```typescript
 // WebBuf: variable-length hex
 const buf = WebBuf.fromHex("deadbeef0102030405");
-buf.toHex();  // "deadbeef0102030405"
+buf.toHex(); // "deadbeef0102030405"
 
 // FixedBuf: fixed-length hex (must match size exactly)
-const hash = FixedBuf.fromHex<32>(32, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-hash.toHex();  // Same 64-char hex string
+const hash = FixedBuf.fromHex<32>(
+  32,
+  "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+);
+hash.toHex(); // Same 64-char hex string
 ```
 
 ### Working with Base32
@@ -543,18 +723,18 @@ compact than hex (26 chars vs 32 for a UUID) and avoids ambiguous characters.
 ```typescript
 // Base32 encoding (Crockford default - case-insensitive, URL-safe)
 const uuid = FixedBuf.fromRandom<16>(16);
-uuid.toBase32();  // "5WJPRV3FKZB1M8Q4C6A0ERSN7Y" (26 chars)
-uuid.toHex();     // "2d93a6b1f5..." (32 chars)
+uuid.toBase32(); // "5WJPRV3FKZB1M8Q4C6A0ERSN7Y" (26 chars)
+uuid.toHex(); // "2d93a6b1f5..." (32 chars)
 
 // Parsing is case-insensitive for Crockford (I/L → 1, O → 0)
-WebBuf.fromBase32("5wjprv3f");  // Same as "5WJPRV3F"
-WebBuf.fromBase32("O1IL");      // Parsed as "0111"
+WebBuf.fromBase32("5wjprv3f"); // Same as "5WJPRV3F"
+WebBuf.fromBase32("O1IL"); // Parsed as "0111"
 
 // Different alphabets
-buf.toBase32({ alphabet: "Rfc4648" });                  // Standard RFC 4648 (with padding)
-buf.toBase32({ alphabet: "Rfc4648", padding: false });  // Without padding
-buf.toBase32({ alphabet: "Rfc4648Lower" });             // Lowercase RFC 4648
-buf.toBase32({ alphabet: "Z" });                        // z-base-32
+buf.toBase32({ alphabet: "Rfc4648" }); // Standard RFC 4648 (with padding)
+buf.toBase32({ alphabet: "Rfc4648", padding: false }); // Without padding
+buf.toBase32({ alphabet: "Rfc4648Lower" }); // Lowercase RFC 4648
+buf.toBase32({ alphabet: "Z" }); // z-base-32
 
 // Supported alphabets:
 // - "Crockford" (default): 0-9 A-Z excluding I L O U, case-insensitive
@@ -569,9 +749,9 @@ buf.toBase32({ alphabet: "Z" });                        // z-base-32
 
 ```typescript
 // Fixed-size random (most common for crypto)
-const key = FixedBuf.fromRandom<32>(32);      // 32-byte key
-const iv = FixedBuf.fromRandom<16>(16);       // 16-byte IV
-const nonce = FixedBuf.fromRandom<32>(32);    // 32-byte nonce
+const key = FixedBuf.fromRandom<32>(32); // 32-byte key
+const iv = FixedBuf.fromRandom<16>(16); // 16-byte IV
+const nonce = FixedBuf.fromRandom<32>(32); // 32-byte nonce
 
 // Variable-size random
 const random = WebBuf.alloc(64);
@@ -585,7 +765,7 @@ crypto.getRandomValues(random);
 function encryptMessage(
   key: FixedBuf<32>,
   iv: FixedBuf<16>,
-  plaintext: WebBuf
+  plaintext: WebBuf,
 ): WebBuf {
   return aescbcEncrypt(plaintext, key, iv);
 }
@@ -611,7 +791,10 @@ webbuf/
 │   ├── webbuf_p256/                 # P-256 (NIST)
 │   ├── webbuf_aescbc/               # AES-CBC
 │   ├── webbuf_aesgcm/               # AES-GCM
-│   └── webbuf_pbkdf2_sha256/        # PBKDF2-HMAC-SHA256
+│   ├── webbuf_pbkdf2_sha256/        # PBKDF2-HMAC-SHA256
+│   ├── webbuf_mlkem/                # ML-KEM (FIPS 203)
+│   ├── webbuf_mldsa/                # ML-DSA (FIPS 204)
+│   └── webbuf_slhdsa/               # SLH-DSA (FIPS 205)
 └── ts/                              # TypeScript packages
     ├── npm-webbuf-webbuf/           # @webbuf/webbuf
     ├── npm-webbuf-fixedbuf/         # @webbuf/fixedbuf
@@ -632,6 +815,9 @@ webbuf/
     ├── npm-webbuf-acs2dh/           # @webbuf/acs2dh
     ├── npm-webbuf-acs2p256dh/       # @webbuf/acs2p256dh
     ├── npm-webbuf-aesgcm-p256dh/    # @webbuf/aesgcm-p256dh
+    ├── npm-webbuf-mlkem/            # @webbuf/mlkem
+    ├── npm-webbuf-mldsa/            # @webbuf/mldsa
+    ├── npm-webbuf-slhdsa/           # @webbuf/slhdsa
     └── npm-webbuf/                  # webbuf (re-exports all)
 ```
 
