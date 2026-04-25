@@ -2,8 +2,9 @@
 
 ## Open
 
-| #   | Title | Opened |
-| --- | ----- | ------ |
+| #                                           | Title                                   | Opened     |
+| ------------------------------------------- | --------------------------------------- | ---------- |
+| [0004](0004-hybrid-pq-encryption/README.md) | Hybrid post-quantum encryption packages | 2026-04-25 |
 
 ## Closed
 
