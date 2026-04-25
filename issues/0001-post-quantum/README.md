@@ -1,6 +1,7 @@
 +++
-status = "open"
+status = "closed"
 opened = "2026-04-25"
+closed = "2026-04-25"
 +++
 
 # Post-quantum cryptography for WebBuf
