@@ -1,6 +1,7 @@
 +++
-status = "open"
+status = "closed"
 opened = "2026-04-25"
+closed = "2026-04-25"
 +++
 
 # AAD support for AES-GCM and post-quantum encryption packages
@@ -451,3 +452,371 @@ The foundational change is done. The next experiment will propagate the optional
 as a passthrough to this primitive. The existing KATs in issue 0004 will
 continue to match (empty-AAD default), and a new captured KAT-with-non-empty-AAD
 per package will prove the AAD is actually authenticated end-to-end.
+
+## Experiment 2: Propagate `aad` through the PQ encryption packages
+
+### Goal
+
+Extend `@webbuf/aesgcm-mlkem` and `@webbuf/aesgcm-p256dh-mlkem` with an optional
+`aad: WebBuf` parameter on encrypt and decrypt, plumbed through to the
+underlying `aesgcmEncrypt` / `aesgcmDecrypt` calls landed in Experiment 1.
+Capture a new non-empty-AAD KAT per package, embed it in this issue, and assert
+it in each package's `test/audit.test.ts`. The existing empty-AAD KATs from
+issue 0004 must continue to match unchanged.
+
+After this experiment, KeyPears (and any other consumer) can bind identity /
+protocol-version / message-type into the AES-GCM authentication tag with no
+key-schedule changes and no wire-format changes — the entire issue 0006 goal is
+delivered.
+
+### Why this experiment is mostly mechanical
+
+The hard work landed in Experiment 1. Both PQ encryption packages are
+pure-TypeScript pass-through layers over `@webbuf/aesgcm`; adding an optional
+`aad` parameter means:
+
+- One new optional argument in three function signatures per package (`Encrypt`,
+  `Decrypt`, `_EncryptDeterministic`).
+- One `aad` argument plumbed through to the inner `aesgcmEncrypt` /
+  `aesgcmDecrypt` calls.
+- One additional captured KAT per package.
+- A handful of new unit tests mirroring the AAD tests already added in
+  `@webbuf/aesgcm`.
+
+No HKDF / key-schedule changes. No wire-format changes. Version bytes (`0x01`,
+`0x02`) and info strings unchanged. The issue 0004 KATs continue to match
+because empty AAD === current behavior.
+
+### Plan
+
+#### `@webbuf/aesgcm-mlkem` (`ts/npm-webbuf-aesgcm-mlkem/src/index.ts`)
+
+Public API target:
+
+```typescript
+export function aesgcmMlkemEncrypt(
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+export function aesgcmMlkemDecrypt(
+  decapKey: FixedBuf<2400>,
+  ciphertext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+export function _aesgcmMlkemEncryptDeterministic(
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  m: FixedBuf<32>,
+  iv: FixedBuf<12>,
+  aad?: WebBuf,
+): WebBuf;
+```
+
+Each of these passes `aad` (or the empty-default) straight to
+`aesgcmEncrypt(plaintext, aesKey, iv, aad)` /
+`aesgcmDecrypt(aesPart, aesKey, aad)`. No other changes.
+
+#### `@webbuf/aesgcm-p256dh-mlkem` (`ts/npm-webbuf-aesgcm-p256dh-mlkem/src/index.ts`)
+
+Public API target:
+
+```typescript
+export function aesgcmP256dhMlkemEncrypt(
+  senderPrivKey: FixedBuf<32>,
+  recipientPubKey: FixedBuf<33>,
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+export function aesgcmP256dhMlkemDecrypt(
+  recipientPrivKey: FixedBuf<32>,
+  senderPubKey: FixedBuf<33>,
+  decapKey: FixedBuf<2400>,
+  ciphertext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+export function _aesgcmP256dhMlkemEncryptDeterministic(
+  senderPrivKey: FixedBuf<32>,
+  recipientPubKey: FixedBuf<33>,
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  m: FixedBuf<32>,
+  iv: FixedBuf<12>,
+  aad?: WebBuf,
+): WebBuf;
+```
+
+Same passthrough pattern.
+
+#### KAT capture
+
+Extend the existing capture script
+`ts/npm-webbuf-mldsa/scripts/capture-issue-0004-kats.ts`-style approach (or add
+a sibling capture script for issue 0006) to generate one non-empty-AAD KAT per
+package. Use deterministic inputs matching the issue 0004 KATs, plus a fixed AAD
+value:
+
+- Non-empty AAD bytes: `aad = WebBuf.fromUtf8("webbuf:test-aad-v1")` (a clear,
+  recognizable string that's also long enough to exercise multi-block GHASH).
+
+The deterministic recipe for each package becomes:
+
+- `@webbuf/aesgcm-mlkem` AAD KAT:
+  - Same `(d, z, m, iv, plaintext)` as issue 0004's pure-PQ KAT.
+  - Plus `aad = "webbuf:test-aad-v1"`.
+  - Capture `SHA-256(ciphertext)`.
+- `@webbuf/aesgcm-p256dh-mlkem` AAD KAT:
+  - Same `(senderPriv, recipientPriv, d, z, m, iv, plaintext)` as issue 0004's
+    hybrid KAT.
+  - Plus `aad = "webbuf:test-aad-v1"`.
+  - Capture `SHA-256(ciphertext)`.
+
+Embed both AAD KATs in this issue under a new "AAD KAT" heading per package,
+alongside the existing empty-AAD KAT references in issue 0004.
+
+#### Tests
+
+Each package gains:
+
+1. **Empty-AAD round-trip** — `Encrypt(...)` / `Decrypt(...)` with no `aad`
+   argument round-trips. (Same coverage as issue 0004.)
+2. **Default empty AAD matches explicit empty AAD byte-for-byte** —
+   `Encrypt(...)` and `Encrypt(..., WebBuf.alloc(0))` produce identical output
+   for the same deterministic inputs. Matches the `@webbuf/aesgcm` test of the
+   same shape.
+3. **Non-empty AAD round-trip** — encrypt with `aad`, decrypt with matching
+   `aad`, plaintext recovers.
+4. **AAD mismatch on decrypt** — encrypt with `aad = X`, decrypt with `aad = Y`,
+   expect throw.
+5. **Existing issue 0004 KAT still matches** — assert
+   `SHA-256(ciphertext) === <existing-empty-AAD-hash>` unchanged.
+6. **AAD KAT regression** — encrypt deterministically with a non-empty `aad`,
+   assert against the new captured hash.
+
+The existing 19 unit tests in `aesgcm-p256dh-mlkem` and 13 in `aesgcm-mlkem`
+continue to pass with no signature changes (the new parameter is optional). New
+AAD tests are additive.
+
+#### README updates
+
+Add a new "Authenticated context (AAD)" subsection to each package's README:
+
+- Document the new optional `aad` parameter and the empty default.
+- Reference issue 0005's Scope section as the original gap and this experiment
+  as the fix.
+- Provide a worked example construction. For `@webbuf/aesgcm-p256dh-mlkem` the
+  example matches the KeyPears-style pattern already in the README's existing
+  Scope section (protocol version || message type || sender addr || NUL ||
+  recipient addr).
+- Cross-link from each Scope section's "Soon (clean)" bullet to the new
+  "Authenticated context (AAD)" section.
+
+#### Verification
+
+Per package:
+
+- `pnpm run typecheck` clean.
+- `pnpm test` passes — old tests unchanged, new AAD tests pass, both KAT
+  regressions (empty-AAD from issue 0004 + new non-empty-AAD) match.
+- `pnpm run build` produces a clean `dist/`.
+
+Plus:
+
+- Umbrella `webbuf` package: `pnpm run typecheck` and
+  `pnpm run build:typescript` clean.
+
+### Risks
+
+1. **Argument-order positioning.** Adding `aad` as an additional positional
+   argument means it always comes last on each function. The
+   `_EncryptDeterministic` helpers already had `m, iv` as their trailing
+   arguments; adding `aad` after `iv` keeps "default randomness inputs first,
+   optional AAD last." Acceptable.
+2. **Capture script drift.** The capture script needs to import the updated
+   `@webbuf/aesgcm-mlkem` and `@webbuf/aesgcm-p256dh-mlkem` `dist/` builds —
+   same pattern as issue 0004. Need to rebuild both packages before running the
+   capture script. Mechanical.
+3. **AAD bytes choice.** Using `"webbuf:test-aad-v1"` makes the KAT reproducible
+   and the intent obvious. Avoid keying off any real-world identity or value.
+
+### Out of scope for this experiment
+
+- Adding AAD support to the classical `@webbuf/aesgcm-p256dh` package (separate
+  decision; that package's KATs and consumers are different, and issue 0006's
+  scope explicitly excludes it).
+- Adding AAD to the AES-CBC sibling packages (`@webbuf/acb3*`, `@webbuf/acs2*`).
+- KeyPears integration code itself — that's a downstream consumer task once
+  these APIs are available.
+
+### Success criteria
+
+- Both PQ encryption packages expose an optional `aad` parameter on the public
+  encrypt / decrypt APIs and the test-only deterministic helpers.
+- Empty-AAD default produces output byte-identical to current behavior — both
+  packages' issue 0004 KAT regressions (`680beaa6...` for pure-PQ, `c689ccce...`
+  for hybrid) continue to match.
+- Non-empty-AAD KATs are captured, embedded in this issue, and asserted in
+  `test/audit.test.ts` for both packages.
+- AAD mismatch on decrypt throws cleanly via AES-GCM authentication failure.
+- Umbrella package and all dependent test suites stay green.
+
+After this experiment passes, issue 0006 is complete and can be closed with a
+`## Conclusion` summarizing the AAD plumbing through all three packages and
+pointing at KeyPears as the now-unblocked first consumer.
+
+### Implementation
+
+Both PQ encryption packages now accept an optional trailing `aad: WebBuf`
+parameter on their public `Encrypt` / `Decrypt` functions and the test-only
+`_EncryptDeterministic` helpers. The parameter is plumbed straight through to
+the underlying `aesgcmEncrypt(plaintext, aesKey, iv, aad)` /
+`aesgcmDecrypt(ciphertext, aesKey, aad)` calls landed in Experiment 1. No HKDF /
+IKM / wire-format changes; both packages keep their version bytes (`0x01` and
+`0x02`) and info strings unchanged.
+
+The empty-AAD default — a shared `EMPTY_AAD = WebBuf.alloc(0)` — means existing
+callers compile and run unchanged. The captured KATs from issue 0004
+(`SHA-256(ciphertext) = 680beaa6...8ef240` for the pure-PQ package and
+`c689ccce...a02b6d` for the hybrid) continue to match byte-for-byte, verified by
+adding an explicit "explicit empty AAD matches no-AAD default" test to each
+package's `test/audit.test.ts`.
+
+The capture script `ts/npm-webbuf/scripts/capture-issue-0006-aad-kats.ts`
+extends the issue 0004 deterministic recipe with `aad = "webbuf:test-aad-v1"`
+and generates a non-empty-AAD KAT per package. Captured values:
+
+#### `@webbuf/aesgcm-mlkem` v1 AAD KAT
+
+| Field             | Value (hex)                                                         |
+| ----------------- | ------------------------------------------------------------------- |
+| ML-KEM d (seed 1) | `0000000000000000000000000000000000000000000000000000000000000000`  |
+| ML-KEM z (seed 2) | `1111111111111111111111111111111111111111111111111111111111111111`  |
+| ML-KEM m (encap)  | `2222222222222222222222222222222222222222222222222222222222222222`  |
+| Plaintext (UTF-8) | `"hello, post-quantum"`                                             |
+| AES-GCM IV        | `333333333333333333333333`                                          |
+| AAD (UTF-8)       | `"webbuf:test-aad-v1"`                                              |
+| AAD (hex)         | `7765626275663a746573742d6161642d7631`                              |
+| Ciphertext length | 1136 bytes (unchanged from the empty-AAD KAT — AAD not transmitted) |
+| SHA-256(ct)       | `f05197b57c6d26122e558cb365bf10a81d13fca1b71e6d35e46399165bafc2ab`  |
+
+#### `@webbuf/aesgcm-p256dh-mlkem` v1 AAD KAT
+
+| Field                     | Value (hex)                                                          |
+| ------------------------- | -------------------------------------------------------------------- |
+| Sender P-256 priv         | `4444444444444444444444444444444444444444444444444444444444444444`   |
+| Recipient P-256 priv      | `5555555555555555555555555555555555555555555555555555555555555555`   |
+| Recipient P-256 pub (33B) | `0257e977f6db7e33c3fe7acf2842ed987009caf56d458682fca447b7d3d762ab34` |
+| ML-KEM d (seed 1)         | `6666666666666666666666666666666666666666666666666666666666666666`   |
+| ML-KEM z (seed 2)         | `7777777777777777777777777777777777777777777777777777777777777777`   |
+| ML-KEM m (encap)          | `8888888888888888888888888888888888888888888888888888888888888888`   |
+| Plaintext (UTF-8)         | `"hybrid"`                                                           |
+| AES-GCM IV                | `999999999999999999999999`                                           |
+| AAD (UTF-8)               | `"webbuf:test-aad-v1"`                                               |
+| AAD (hex)                 | `7765626275663a746573742d6161642d7631`                               |
+| Ciphertext length         | 1123 bytes (unchanged from the empty-AAD KAT)                        |
+| SHA-256(ct)               | `daae47a961301988c501dc879d95d5d7885fabdcd1502404033b85526ad1595a`   |
+
+Both AAD KATs are asserted in `test/audit.test.ts` for the respective packages.
+The empty-AAD KATs from issue 0004 continue to match unchanged, verifying
+backward compatibility byte-for-byte.
+
+Each package's unit test suite (`test/index.test.ts`) gained AAD behavior tests:
+non-empty round-trip, mismatch rejection, encrypt-with-AAD-decrypt-without-AAD
+rejection (and vice versa for the pure-PQ package), and a worked
+**KeyPears-style AAD construction** in the hybrid package that asserts both
+successful round-trip and rejection when the recipient address inside AAD is
+tampered.
+
+### Result: Pass
+
+**Per-package test totals (all green):**
+
+- `@webbuf/aesgcm-mlkem`: 22 tests pass (5 audit + 17 unit). Audit now includes
+  3 issue-0004 tests + 2 issue-0006 AAD tests. Unit includes 13 original + 4 new
+  AAD tests.
+- `@webbuf/aesgcm-p256dh-mlkem`: 25 tests pass (6 audit + 19 unit). Audit now
+  includes 4 issue-0004 tests + 2 issue-0006 AAD tests. Unit includes 16
+  original + 3 new AAD tests.
+- `@webbuf/aesgcm`: 34 tests pass (unchanged from Experiment 1).
+
+**Build and typecheck:**
+
+- `pnpm run typecheck` and `pnpm run build` clean in both PQ packages.
+- Umbrella `webbuf`: `pnpm install`, `pnpm run typecheck`, and
+  `pnpm run build:typescript` all clean — re-exports still resolve.
+
+**KAT regressions:**
+
+- Empty-AAD: pure-PQ `680beaa6...8ef240` ✓, hybrid `c689ccce...a02b6d` ✓ — both
+  unchanged byte-for-byte from issue 0004, confirming backward compatibility.
+- Non-empty AAD: pure-PQ `f05197b5...5bafc2ab` ✓, hybrid `daae47a9...6ad1595a` ✓
+  — the new captured KATs match on the first run.
+
+**AAD-tag-not-body invariant verified empirically** in both packages' audit
+tests: the AES-CTR ciphertext body (everything except the final 16-byte AES-GCM
+tag) is byte-identical with and without AAD, because AES-CTR keystream is
+independent of AAD. Only the GHASH tag differs. This confirms the implementation
+routes AAD through the GHASH input correctly.
+
+## Conclusion
+
+Issue 0006 is complete. WebBuf's AES-GCM-based encryption packages now accept an
+optional `aad` (Additional Authenticated Data) parameter on encrypt and decrypt:
+
+- `@webbuf/aesgcm` (Experiment 1) — added the foundational AAD support to the
+  underlying primitive. 26 Rust tests, 34 TS tests.
+- `@webbuf/aesgcm-mlkem` (Experiment 2) — propagated `aad?` through the pure-PQ
+  package. 22 tests including a new non-empty-AAD KAT.
+- `@webbuf/aesgcm-p256dh-mlkem` (Experiment 2) — propagated `aad?` through the
+  hybrid package. 25 tests including a new non-empty-AAD KAT plus a worked
+  KeyPears-style AAD construction test.
+
+The change is fully additive and backward-compatible: empty AAD = current
+behavior, captured issue 0004 KATs match unchanged. Wire format unchanged — AAD
+is authenticated by AES-GCM but not transmitted, so consumers can bind protocol
+version, sender / recipient identity, message type, transcript bytes, or any
+other context into the authentication tag without changing the on-wire size or
+shape.
+
+The KeyPears migration is now unblocked with respect to context binding. The
+recommended construction lives in the hybrid package's README:
+
+```typescript
+const aad = WebBuf.concat([
+  WebBuf.fromArray([PROTOCOL_VERSION]),
+  WebBuf.fromArray([MESSAGE_TYPE]),
+  WebBuf.fromUtf8(senderAddress),
+  WebBuf.fromArray([0]),
+  WebBuf.fromUtf8(recipientAddress),
+]);
+```
+
+KeyPears (or any other federated consumer) can drop this in alongside the
+existing keys and immediately get authenticated context binding in the AES-GCM
+tag — no key-schedule customization, no wire-format changes, no extra round
+trips.
+
+Two captured KAT vectors per package (empty-AAD from issue 0004 and
+non-empty-AAD from this issue) are embedded in their respective issues and
+asserted in `test/audit.test.ts`. The capture scripts live at:
+
+- `ts/npm-webbuf/scripts/capture-issue-0004-kats.ts` — empty-AAD KATs
+- `ts/npm-webbuf/scripts/capture-issue-0006-aad-kats.ts` — non-empty-AAD KATs
+
+Both are committed for re-derivation if the dependency chain changes.
+
+The full WebBuf post-quantum encryption story is now:
+
+| Package                       | Algorithm                     | Type                 | Optional AAD |
+| ----------------------------- | ----------------------------- | -------------------- | ------------ |
+| `@webbuf/mlkem`               | ML-KEM (FIPS 203)             | KEM primitive        | n/a          |
+| `@webbuf/mldsa`               | ML-DSA (FIPS 204)             | Signature primitive  | n/a          |
+| `@webbuf/slhdsa`              | SLH-DSA (FIPS 205)            | Hash-based signature | n/a          |
+| `@webbuf/aesgcm`              | AES-256-GCM                   | Symmetric AEAD       | yes          |
+| `@webbuf/aesgcm-mlkem`        | AES-GCM + ML-KEM              | Pure-PQ encryption   | yes          |
+| `@webbuf/aesgcm-p256dh-mlkem` | AES-GCM + P-256 ECDH + ML-KEM | Hybrid encryption    | yes          |

@@ -103,4 +103,89 @@ describe("Audit: issue 0004 Experiment 1 hybrid KAT", () => {
       "999999999999999999999999",
     );
   });
+
+  it("explicit empty AAD produces the same bytes as the no-AAD default", () => {
+    const recipientPub = p256PublicKeyCreate(KAT_RECIPIENT_PRIV);
+    const { encapsulationKey } = mlKem768KeyPairDeterministic(KAT_D, KAT_Z);
+
+    const ctNoAad = _aesgcmP256dhMlkemEncryptDeterministic(
+      KAT_SENDER_PRIV,
+      recipientPub,
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+    );
+    const ctEmptyAad = _aesgcmP256dhMlkemEncryptDeterministic(
+      KAT_SENDER_PRIV,
+      recipientPub,
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+      WebBuf.alloc(0),
+    );
+    expect(ctEmptyAad.toHex()).toBe(ctNoAad.toHex());
+  });
+});
+
+describe("Audit: issue 0006 Experiment 2 hybrid AAD KAT", () => {
+  // Same deterministic inputs as the issue 0004 hybrid KAT, plus a
+  // fixed AAD. The ciphertext bytes differ because AAD changes the
+  // AES-GCM tag, even though all other inputs (including IV) are
+  // identical.
+  const KAT_AAD = WebBuf.fromUtf8("webbuf:test-aad-v1");
+  const AAD_KAT_CIPHERTEXT_SHA256 =
+    "daae47a961301988c501dc879d95d5d7885fabdcd1502404033b85526ad1595a";
+
+  it("matches the captured byte-precise ciphertext with non-empty AAD", () => {
+    const recipientPub = p256PublicKeyCreate(KAT_RECIPIENT_PRIV);
+    const { encapsulationKey } = mlKem768KeyPairDeterministic(KAT_D, KAT_Z);
+
+    const ciphertext = _aesgcmP256dhMlkemEncryptDeterministic(
+      KAT_SENDER_PRIV,
+      recipientPub,
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+      KAT_AAD,
+    );
+
+    // AAD is not transmitted; ciphertext length unchanged from empty-AAD KAT
+    expect(ciphertext.length).toBe(KAT_CIPHERTEXT_LENGTH);
+    expect(sha256Hash(ciphertext).toHex()).toBe(AAD_KAT_CIPHERTEXT_SHA256);
+  });
+
+  it("AAD changes only the tag, not the IV or AES-CTR body", () => {
+    const recipientPub = p256PublicKeyCreate(KAT_RECIPIENT_PRIV);
+    const { encapsulationKey } = mlKem768KeyPairDeterministic(KAT_D, KAT_Z);
+
+    const ctNoAad = _aesgcmP256dhMlkemEncryptDeterministic(
+      KAT_SENDER_PRIV,
+      recipientPub,
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+    );
+    const ctWithAad = _aesgcmP256dhMlkemEncryptDeterministic(
+      KAT_SENDER_PRIV,
+      recipientPub,
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+      KAT_AAD,
+    );
+
+    expect(ctWithAad.length).toBe(ctNoAad.length);
+    const tagStart = ctNoAad.length - 16;
+    expect(ctWithAad.slice(0, tagStart).toHex()).toBe(
+      ctNoAad.slice(0, tagStart).toHex(),
+    );
+    expect(ctWithAad.slice(tagStart).toHex()).not.toBe(
+      ctNoAad.slice(tagStart).toHex(),
+    );
+  });
 });

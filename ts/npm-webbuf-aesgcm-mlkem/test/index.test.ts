@@ -166,3 +166,44 @@ describe("aesgcm-mlkem rejection paths", () => {
     expect(recovered.toHex()).toBe(plaintext.toHex());
   });
 });
+
+describe("aesgcm-mlkem AAD support", () => {
+  it("non-empty AAD round-trip recovers the plaintext", () => {
+    const { encapsulationKey, decapsulationKey } = mlKem768KeyPair();
+    const plaintext = WebBuf.fromUtf8("context-bound");
+    const aad = WebBuf.fromUtf8("alice@a:bob@b:v1");
+
+    const ct = aesgcmMlkemEncrypt(encapsulationKey, plaintext, aad);
+    const pt = aesgcmMlkemDecrypt(decapsulationKey, ct, aad);
+
+    expect(pt.toUtf8()).toBe("context-bound");
+  });
+
+  it("AAD mismatch on decrypt throws", () => {
+    const { encapsulationKey, decapsulationKey } = mlKem768KeyPair();
+    const plaintext = WebBuf.fromUtf8("for one context only");
+    const aadA = WebBuf.fromUtf8("context-A");
+    const aadB = WebBuf.fromUtf8("context-B");
+
+    const ct = aesgcmMlkemEncrypt(encapsulationKey, plaintext, aadA);
+    expect(() => aesgcmMlkemDecrypt(decapsulationKey, ct, aadB)).toThrow();
+  });
+
+  it("decrypting AAD-encrypted ciphertext without AAD throws", () => {
+    const { encapsulationKey, decapsulationKey } = mlKem768KeyPair();
+    const plaintext = WebBuf.fromUtf8("needs context");
+    const aad = WebBuf.fromUtf8("ctx");
+
+    const ct = aesgcmMlkemEncrypt(encapsulationKey, plaintext, aad);
+    expect(() => aesgcmMlkemDecrypt(decapsulationKey, ct)).toThrow();
+  });
+
+  it("decrypting empty-AAD ciphertext with AAD throws", () => {
+    const { encapsulationKey, decapsulationKey } = mlKem768KeyPair();
+    const plaintext = WebBuf.fromUtf8("no context at encrypt");
+    const aad = WebBuf.fromUtf8("ctx");
+
+    const ct = aesgcmMlkemEncrypt(encapsulationKey, plaintext);
+    expect(() => aesgcmMlkemDecrypt(decapsulationKey, ct, aad)).toThrow();
+  });
+});

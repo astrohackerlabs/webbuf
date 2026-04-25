@@ -360,3 +360,100 @@ describe("aesgcm-p256dh-mlkem hybrid defense-in-depth", () => {
     ).toThrow();
   });
 });
+
+describe("aesgcm-p256dh-mlkem AAD support", () => {
+  it("non-empty AAD round-trip recovers the plaintext", () => {
+    const s = freshSetup();
+    const plaintext = WebBuf.fromUtf8("hybrid + context");
+    const aad = WebBuf.fromUtf8("alice@a:bob@b:v1");
+
+    const ct = aesgcmP256dhMlkemEncrypt(
+      s.senderPriv,
+      s.recipientPub,
+      s.encapKey,
+      plaintext,
+      aad,
+    );
+    const pt = aesgcmP256dhMlkemDecrypt(
+      s.recipientPriv,
+      s.senderPub,
+      s.decapKey,
+      ct,
+      aad,
+    );
+
+    expect(pt.toUtf8()).toBe("hybrid + context");
+  });
+
+  it("AAD mismatch on decrypt throws", () => {
+    const s = freshSetup();
+    const plaintext = WebBuf.fromUtf8("for one context only");
+    const aadA = WebBuf.fromUtf8("context-A");
+    const aadB = WebBuf.fromUtf8("context-B");
+
+    const ct = aesgcmP256dhMlkemEncrypt(
+      s.senderPriv,
+      s.recipientPub,
+      s.encapKey,
+      plaintext,
+      aadA,
+    );
+    expect(() =>
+      aesgcmP256dhMlkemDecrypt(
+        s.recipientPriv,
+        s.senderPub,
+        s.decapKey,
+        ct,
+        aadB,
+      ),
+    ).toThrow();
+  });
+
+  it("KeyPears-style AAD construction round-trips", () => {
+    const s = freshSetup();
+    const plaintext = WebBuf.fromUtf8("text body");
+    const PROTOCOL_VERSION = 1;
+    const MESSAGE_TYPE_TEXT = 1;
+    const aad = WebBuf.concat([
+      WebBuf.fromArray([PROTOCOL_VERSION]),
+      WebBuf.fromArray([MESSAGE_TYPE_TEXT]),
+      WebBuf.fromUtf8("alice@example.com"),
+      WebBuf.fromArray([0]),
+      WebBuf.fromUtf8("bob@example.org"),
+    ]);
+
+    const ct = aesgcmP256dhMlkemEncrypt(
+      s.senderPriv,
+      s.recipientPub,
+      s.encapKey,
+      plaintext,
+      aad,
+    );
+    const pt = aesgcmP256dhMlkemDecrypt(
+      s.recipientPriv,
+      s.senderPub,
+      s.decapKey,
+      ct,
+      aad,
+    );
+    expect(pt.toUtf8()).toBe("text body");
+
+    // Tamper with the recipient address inside AAD → fails.
+    const wrongAad = WebBuf.concat([
+      WebBuf.fromArray([PROTOCOL_VERSION]),
+      WebBuf.fromArray([MESSAGE_TYPE_TEXT]),
+      WebBuf.fromUtf8("alice@example.com"),
+      WebBuf.fromArray([0]),
+      WebBuf.fromUtf8("eve@attacker.com"),
+    ]);
+    expect(() =>
+      aesgcmP256dhMlkemDecrypt(
+        s.recipientPriv,
+        s.senderPub,
+        s.decapKey,
+        ct,
+        wrongAad,
+      ),
+    ).toThrow();
+  });
+});

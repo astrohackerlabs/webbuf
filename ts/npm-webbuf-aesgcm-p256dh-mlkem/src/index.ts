@@ -32,6 +32,7 @@ const FIXED_OVERHEAD = 1 + KEM_CT_SIZE + IV_SIZE + TAG_SIZE; // 1117
 
 const ZERO_SALT = FixedBuf.alloc(32);
 const INFO = WebBuf.fromUtf8("webbuf:aesgcm-p256dh-mlkem v1");
+const EMPTY_AAD = WebBuf.alloc(0);
 
 /**
  * HKDF-SHA-256 (RFC 5869) for output length L = 32 bytes.
@@ -59,6 +60,13 @@ function hkdfSha256L32(
  * derived from the concatenation of the raw 32-byte ECDH X-coordinate
  * and the 32-byte ML-KEM shared secret via HKDF-SHA-256.
  *
+ * `aad` is optional Additional Authenticated Data — bytes that are
+ * authenticated by the AES-GCM tag but not encrypted and not
+ * transmitted in the output. The recipient must supply the same `aad`
+ * bytes the sender used; any mismatch causes
+ * `aesgcmP256dhMlkemDecrypt` to throw. Empty AAD is the default and
+ * matches the original issue 0004 behavior.
+ *
  * Output layout:
  *   [0..1)         version byte (0x02)
  *   [1..1089)      ML-KEM-768 ciphertext (1088 bytes)
@@ -71,21 +79,23 @@ export function aesgcmP256dhMlkemEncrypt(
   recipientPubKey: FixedBuf<33>,
   recipientEncapKey: FixedBuf<1184>,
   plaintext: WebBuf,
+  aad: WebBuf = EMPTY_AAD,
 ): WebBuf {
   const ecdhRaw = p256SharedSecretRaw(senderPrivKey, recipientPubKey);
   const { ciphertext: kemCt, sharedSecret: kemSS } =
     mlKem768Encapsulate(recipientEncapKey);
   const ikm = WebBuf.concat([ecdhRaw.buf, kemSS.buf]);
   const aesKey = hkdfSha256L32(ZERO_SALT, ikm, INFO);
-  const aesPart = aesgcmEncrypt(plaintext, aesKey);
+  const aesPart = aesgcmEncrypt(plaintext, aesKey, undefined, aad);
   return WebBuf.concat([WebBuf.fromArray([VERSION]), kemCt.buf, aesPart]);
 }
 
 /**
  * Test/internal-only: encrypt with caller-supplied ML-KEM `m` and
- * AES-GCM `iv`. Used by the KAT regression test in
+ * AES-GCM `iv`. Used by the KAT regression tests in
  * `test/audit.test.ts` to assert byte-precise output against the
- * fixture from issue 0004 Experiment 1. Application code should use
+ * fixtures from issue 0004 (empty AAD) and issue 0006 Experiment 2
+ * (non-empty AAD). Application code should use
  * `aesgcmP256dhMlkemEncrypt`.
  */
 export function _aesgcmP256dhMlkemEncryptDeterministic(
@@ -95,13 +105,14 @@ export function _aesgcmP256dhMlkemEncryptDeterministic(
   plaintext: WebBuf,
   m: FixedBuf<32>,
   iv: FixedBuf<12>,
+  aad: WebBuf = EMPTY_AAD,
 ): WebBuf {
   const ecdhRaw = p256SharedSecretRaw(senderPrivKey, recipientPubKey);
   const { ciphertext: kemCt, sharedSecret: kemSS } =
     mlKem768EncapsulateDeterministic(recipientEncapKey, m);
   const ikm = WebBuf.concat([ecdhRaw.buf, kemSS.buf]);
   const aesKey = hkdfSha256L32(ZERO_SALT, ikm, INFO);
-  const aesPart = aesgcmEncrypt(plaintext, aesKey, iv);
+  const aesPart = aesgcmEncrypt(plaintext, aesKey, iv, aad);
   return WebBuf.concat([WebBuf.fromArray([VERSION]), kemCt.buf, aesPart]);
 }
 
@@ -112,15 +123,16 @@ export function _aesgcmP256dhMlkemEncryptDeterministic(
  * hybrid key by combining ECDH and decapsulated KEM shared secrets,
  * and decrypts. Throws on version-byte mismatch, truncation, or
  * AES-GCM authentication failure (which catches tampered KEM
- * ciphertext, tampered AES ciphertext, tampered IV, or any wrong
- * input key — including a wrong P-256 sender pub, wrong P-256
- * recipient priv, or wrong ML-KEM decapsulation key).
+ * ciphertext, tampered AES ciphertext, tampered IV, AAD mismatch, or
+ * any wrong input key — including a wrong P-256 sender pub, wrong
+ * P-256 recipient priv, or wrong ML-KEM decapsulation key).
  */
 export function aesgcmP256dhMlkemDecrypt(
   recipientPrivKey: FixedBuf<32>,
   senderPubKey: FixedBuf<33>,
   decapKey: FixedBuf<2400>,
   ciphertext: WebBuf,
+  aad: WebBuf = EMPTY_AAD,
 ): WebBuf {
   if (ciphertext.length < FIXED_OVERHEAD) {
     throw new Error(
@@ -142,7 +154,7 @@ export function aesgcmP256dhMlkemDecrypt(
   const kemSS = mlKem768Decapsulate(decapKey, kemCt);
   const ikm = WebBuf.concat([ecdhRaw.buf, kemSS.buf]);
   const aesKey = hkdfSha256L32(ZERO_SALT, ikm, INFO);
-  return aesgcmDecrypt(aesPart, aesKey);
+  return aesgcmDecrypt(aesPart, aesKey, aad);
 }
 
 export const AESGCM_P256DH_MLKEM = {

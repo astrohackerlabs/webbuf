@@ -76,4 +76,77 @@ describe("Audit: issue 0004 Experiment 1 KAT", () => {
       "333333333333333333333333",
     );
   });
+
+  it("explicit empty AAD produces the same bytes as the no-AAD default", () => {
+    const { encapsulationKey } = mlKem768KeyPairDeterministic(KAT_D, KAT_Z);
+    const ctNoAad = _aesgcmMlkemEncryptDeterministic(
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+    );
+    const ctEmptyAad = _aesgcmMlkemEncryptDeterministic(
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+      WebBuf.alloc(0),
+    );
+    expect(ctEmptyAad.toHex()).toBe(ctNoAad.toHex());
+  });
+});
+
+describe("Audit: issue 0006 Experiment 2 AAD KAT", () => {
+  // Same deterministic inputs as the issue 0004 KAT, plus a fixed AAD.
+  // The ciphertext bytes differ because AAD changes the AES-GCM tag,
+  // even though all other inputs (including IV) are identical.
+  const KAT_AAD = WebBuf.fromUtf8("webbuf:test-aad-v1");
+  const AAD_KAT_CIPHERTEXT_SHA256 =
+    "f05197b57c6d26122e558cb365bf10a81d13fca1b71e6d35e46399165bafc2ab";
+
+  it("matches the captured byte-precise ciphertext with non-empty AAD", () => {
+    const { encapsulationKey } = mlKem768KeyPairDeterministic(KAT_D, KAT_Z);
+    const ciphertext = _aesgcmMlkemEncryptDeterministic(
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+      KAT_AAD,
+    );
+
+    // AAD is not transmitted; ciphertext length unchanged from empty-AAD KAT
+    expect(ciphertext.length).toBe(KAT_CIPHERTEXT_LENGTH);
+    expect(sha256Hash(ciphertext).toHex()).toBe(AAD_KAT_CIPHERTEXT_SHA256);
+  });
+
+  it("AAD changes only the tag, not the IV or AES-CTR body", () => {
+    const { encapsulationKey } = mlKem768KeyPairDeterministic(KAT_D, KAT_Z);
+    const ctNoAad = _aesgcmMlkemEncryptDeterministic(
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+    );
+    const ctWithAad = _aesgcmMlkemEncryptDeterministic(
+      encapsulationKey,
+      KAT_PLAINTEXT,
+      KAT_M,
+      KAT_IV,
+      KAT_AAD,
+    );
+
+    // Same length
+    expect(ctWithAad.length).toBe(ctNoAad.length);
+    // Same body up through end of AES-CTR ciphertext (everything before
+    // the trailing 16-byte tag) — AES-CTR keystream is unaffected by
+    // AAD.
+    const tagStart = ctNoAad.length - 16;
+    expect(ctWithAad.slice(0, tagStart).toHex()).toBe(
+      ctNoAad.slice(0, tagStart).toHex(),
+    );
+    // Tag differs because AAD changes the GHASH input.
+    expect(ctWithAad.slice(tagStart).toHex()).not.toBe(
+      ctNoAad.slice(tagStart).toHex(),
+    );
+  });
 });

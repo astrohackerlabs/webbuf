@@ -119,25 +119,72 @@ no other application-level data is verified.
 
 **If you need those bindings:**
 
-- **Today (works, ugly):** prepend your context bytes to the plaintext before
+- **Avoid (works, ugly):** prepend your context bytes to the plaintext before
   encryption and parse them off after decryption. The cost is that the
   encrypted-vs-authenticated line gets blurry and every consumer reinvents the
   same framing.
-- **Soon (clean):** use the optional `aad` (Additional Authenticated Data)
-  parameter being added in
-  [issue 0006](../../issues/0006-aad-pq-encryption/README.md). AAD is
-  authenticated by AES-GCM but not encrypted; the recipient must supply the same
-  context bytes the sender did, and any mismatch fails decryption. No
-  wire-format change, no key-schedule change, empty-AAD default keeps existing
-  behavior.
+- **Recommended (clean):** use the optional `aad` (Additional Authenticated
+  Data) parameter — see
+  [Authenticated context (AAD)](#authenticated-context-aad) below.
+
+## Authenticated context (AAD)
+
+`aesgcmMlkemEncrypt` and `aesgcmMlkemDecrypt` accept an optional trailing `aad`
+parameter (default: empty `WebBuf`). AAD is **authenticated** by AES-GCM but
+**not encrypted** and **not transmitted** — the recipient must supply the exact
+same bytes the sender used, and any mismatch fails decryption with an AES-GCM
+tag error.
+
+```typescript
+const aad = WebBuf.fromUtf8("alice@example.com:bob@example.com:v1");
+
+// Sender binds context into the tag
+const ciphertext = aesgcmMlkemEncrypt(encapsulationKey, plaintext, aad);
+
+// Recipient must supply the same AAD or decryption throws
+const recovered = aesgcmMlkemDecrypt(decapsulationKey, ciphertext, aad);
+```
+
+Use AAD to bind any context that should be inseparable from the message: the
+protocol version, sender / recipient identity, message type, transcript state,
+sequence number, or anything else where mismatch should mean "this isn't the
+message I think it is."
+
+**Properties:**
+
+- **Backward-compatible.** Calls with no `aad` argument behave identically to
+  before (empty AAD is mathematically equivalent to no AAD in AES-GCM). The
+  issue 0004 KAT regression (`SHA-256(ciphertext) === 680beaa6...8ef240`) still
+  matches byte-for-byte.
+- **No wire-format change.** Ciphertext length is unchanged because AAD is not
+  transmitted; only the AES-GCM authentication tag changes when AAD is
+  non-empty.
+- **No key-schedule change.** The HKDF info string and version byte stay the
+  same. AAD enters only the GHASH computation, not the AES key derivation.
+- **Symmetric requirement.** Sender and recipient must agree on AAD bytes
+  exactly — typically derived from a shared protocol or out-of-band metadata.
+  Mismatches throw cleanly.
+
+The change was landed in
+[issue 0006](../../issues/0006-aad-pq-encryption/README.md), which also
+documents the captured non-empty-AAD KAT
+(`SHA-256(ciphertext) === f05197b5...5bafc2ab`) asserted in
+`test/audit.test.ts`. See
+[issue 0005](../../issues/0005-pq-package-followups/README.md) for the original
+Scope-section gap that motivated this.
 
 ## Tests
 
-- 13 unit tests covering round-trip, size invariants, version byte,
-  non-determinism, and all rejection paths (wrong recipient, tampered
-  KEM/AES/IV, wrong version, truncation).
-- 2 audit tests asserting the byte-precise KAT from issue 0004 Experiment 1:
-  `SHA-256(ciphertext) === 680beaa6...8ef240` for the fixed-input fixture.
+- 17 unit tests covering round-trip, size invariants, version byte,
+  non-determinism, all rejection paths (wrong recipient, tampered KEM/AES/IV,
+  wrong version, truncation), and AAD round-trip / mismatch / missing / extra
+  scenarios.
+- 5 audit tests asserting both the byte-precise KAT from issue 0004 Experiment 1
+  (`SHA-256(ciphertext) === 680beaa6...8ef240`) and the byte-precise non-empty
+  AAD KAT from issue 0006 Experiment 2
+  (`SHA-256(ciphertext) === f05197b5...5bafc2ab`), plus invariants confirming
+  AAD changes only the tag and the explicit empty-AAD path matches the no-AAD
+  default byte-for-byte.
 
 ```bash
 pnpm test
@@ -145,9 +192,9 @@ pnpm test
 
 ## Internal API
 
-`_aesgcmMlkemEncryptDeterministic(encapKey, plaintext, m, iv)` exists for KAT
-regression tests and reproducible fixtures. Application code should never call
-it directly — the leading underscore is a marker that the function exposes
+`_aesgcmMlkemEncryptDeterministic(encapKey, plaintext, m, iv, aad?)` exists for
+KAT regression tests and reproducible fixtures. Application code should never
+call it directly — the leading underscore is a marker that the function exposes
 deterministic randomness, which is unsafe in production. Use
 `aesgcmMlkemEncrypt` instead.
 

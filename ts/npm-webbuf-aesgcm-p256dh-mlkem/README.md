@@ -158,44 +158,101 @@ themselves.
 
 **If you need those bindings:**
 
-- **Today (works, ugly):** prepend your context bytes to the plaintext before
+- **Avoid (works, ugly):** prepend your context bytes to the plaintext before
   encryption and parse them off after decryption. The cost is that the
   encrypted-vs-authenticated line gets blurry and every consumer reinvents the
   same framing.
-- **Soon (clean):** use the optional `aad` (Additional Authenticated Data)
-  parameter being added in
-  [issue 0006](../../issues/0006-aad-pq-encryption/README.md). AAD is
-  authenticated by AES-GCM but not encrypted; the recipient must supply the same
-  context bytes the sender did, and any mismatch fails decryption. No
-  wire-format change, no key-schedule change, empty-AAD default keeps existing
-  behavior.
+- **Recommended (clean):** use the optional `aad` (Additional Authenticated
+  Data) parameter — see
+  [Authenticated context (AAD)](#authenticated-context-aad) below.
+
+## Authenticated context (AAD)
+
+`aesgcmP256dhMlkemEncrypt` and `aesgcmP256dhMlkemDecrypt` accept an optional
+trailing `aad` parameter (default: empty `WebBuf`). AAD is **authenticated** by
+AES-GCM but **not encrypted** and **not transmitted** — the recipient must
+supply the exact same bytes the sender used, and any mismatch fails decryption
+with an AES-GCM tag error.
 
 For consumers like KeyPears that federate across multiple domains and have
-multiple message types, the AAD construction will look something like:
+multiple message types, the recommended AAD construction binds protocol version,
+message type, and the federated sender / recipient addresses:
 
 ```typescript
 const aad = WebBuf.concat([
   WebBuf.fromArray([PROTOCOL_VERSION]),
   WebBuf.fromArray([MESSAGE_TYPE]),
   WebBuf.fromUtf8(senderAddress),
-  WebBuf.fromArray([0]),
+  WebBuf.fromArray([0]), // NUL separator — `@` cannot appear in addresses, but
+  // a separator avoids ambiguity if two addresses
+  // concatenated could equal one address verbatim.
   WebBuf.fromUtf8(recipientAddress),
 ]);
+
+// Sender
+const ciphertext = aesgcmP256dhMlkemEncrypt(
+  senderPriv,
+  recipientPub,
+  encapsulationKey,
+  plaintext,
+  aad,
+);
+
+// Recipient must rebuild the same AAD bytes from its own view of the
+// protocol; mismatch on any field throws a clean AES-GCM tag error.
+const recovered = aesgcmP256dhMlkemDecrypt(
+  recipientPriv,
+  senderPub,
+  decapsulationKey,
+  ciphertext,
+  aad,
+);
 ```
 
-binding all four pieces of context into the authenticated tag without affecting
-the wire format.
+Use AAD to bind any context that should be inseparable from the message: the
+protocol version, sender / recipient identity, message type, transcript state,
+sequence number, or anything else where mismatch should mean "this isn't the
+message I think it is." The four-field construction above is the worked example
+asserted in the test suite.
+
+**Properties:**
+
+- **Backward-compatible.** Calls with no `aad` argument behave identically to
+  before (empty AAD is mathematically equivalent to no AAD in AES-GCM). The
+  issue 0004 KAT regression (`SHA-256(ciphertext) === c689ccce...a02b6d`) still
+  matches byte-for-byte.
+- **No wire-format change.** Ciphertext length is unchanged because AAD is not
+  transmitted; only the AES-GCM authentication tag changes when AAD is
+  non-empty.
+- **No key-schedule change.** The HKDF info string and version byte stay the
+  same. AAD enters only the GHASH computation, not the AES key derivation.
+- **Symmetric requirement.** Sender and recipient must agree on AAD bytes
+  exactly — typically derived from a shared protocol or out-of-band metadata.
+  Mismatches throw cleanly.
+
+The change was landed in
+[issue 0006](../../issues/0006-aad-pq-encryption/README.md), which also
+documents the captured non-empty-AAD KAT
+(`SHA-256(ciphertext) === daae47a9...6ad1595a`) asserted in
+`test/audit.test.ts`. See
+[issue 0005](../../issues/0005-pq-package-followups/README.md) for the original
+Scope-section gap that motivated this.
 
 ## Tests
 
-- 16 unit tests covering round-trip, size invariants, version byte,
-  non-determinism, and all rejection paths.
-- 1 KAT regression test asserting the byte-precise ciphertext from issue 0004
-  Experiment 1: `SHA-256(ciphertext) === c689ccce...a02b6d`.
+- 19 unit tests covering round-trip, size invariants, version byte,
+  non-determinism, all rejection paths, AAD round-trip / mismatch scenarios, and
+  a KeyPears-style four-field AAD construction with tamper detection.
+- 6 audit tests asserting:
+  - The byte-precise issue 0004 Experiment 1 KAT
+    (`SHA-256(ciphertext) === c689ccce...a02b6d`) and the captured recipient
+    P-256 public-key derivation and wire-format prefix bytes.
+  - The byte-precise issue 0006 Experiment 2 non-empty-AAD KAT
+    (`SHA-256(ciphertext) === daae47a9...6ad1595a`).
+  - That the explicit empty-AAD path matches the no-AAD default byte-for-byte.
+  - That AAD changes only the AES-GCM tag and not the AES-CTR ciphertext body.
 - 2 hybrid defense-in-depth tests confirming both shared secrets are
   load-bearing.
-- 2 audit tests verifying the KAT recipient public-key derivation and the
-  wire-format prefix bytes.
 
 ```bash
 pnpm test
@@ -203,7 +260,7 @@ pnpm test
 
 ## Internal API
 
-`_aesgcmP256dhMlkemEncryptDeterministic(senderPriv, recipientPub, encapKey, plaintext, m, iv)`
+`_aesgcmP256dhMlkemEncryptDeterministic(senderPriv, recipientPub, encapKey, plaintext, m, iv, aad?)`
 exists for KAT regression tests and reproducible fixtures. Application code
 should never call it directly — the leading underscore signals deterministic
 randomness, which is unsafe in production. Use `aesgcmP256dhMlkemEncrypt`
