@@ -766,7 +766,7 @@ The 177 audit tests exercise the official NIST ACVP-Server FIPS 205 vectors
 slow `s` (small signature) variants which take ~1.3s per signing operation —
 characteristic of SLH-DSA, not a wrapper issue.
 
-### Conclusion
+## Conclusion
 
 All three NIST-finalized PQC algorithms are now packaged in WebBuf:
 

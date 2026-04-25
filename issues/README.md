@@ -2,8 +2,9 @@
 
 ## Open
 
-| #   | Title | Opened |
-| --- | ----- | ------ |
+| #                                                 | Title                      | Opened     |
+| ------------------------------------------------- | -------------------------- | ---------- |
+| [0002](0002-post-quantum-api-hardening/README.md) | Post-quantum API hardening | 2026-04-25 |
 
 ## Closed
 
