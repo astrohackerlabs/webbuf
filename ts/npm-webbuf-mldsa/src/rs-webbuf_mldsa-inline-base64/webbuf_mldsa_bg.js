@@ -71,6 +71,30 @@ export function ml_dsa_44_keypair(seed) {
 }
 
 /**
+ * Sign a message using the FIPS 204 message-level ML-DSA.Sign
+ * deterministic variant with context separation.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @returns {Uint8Array}
+ */
+export function ml_dsa_44_sign(sk_bytes, message, context) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.ml_dsa_44_sign(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
  * Sign a message using the FIPS 204 internal sign primitive.
  *
  * `sk_bytes` is the expanded FIPS 204 secret key encoding,
@@ -96,6 +120,32 @@ export function ml_dsa_44_sign_internal(sk_bytes, message, rnd) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 204 message-level ML-DSA.Verify
+ * algorithm with context separation.
+ *
+ * Returns true if the signature is valid for the message, context,
+ * and verifying key. Invalid keys, signatures, or contexts return
+ * false.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function ml_dsa_44_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.ml_dsa_44_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -141,6 +191,30 @@ export function ml_dsa_65_keypair(seed) {
 }
 
 /**
+ * Sign a message using the FIPS 204 message-level ML-DSA.Sign
+ * deterministic variant with context separation.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @returns {Uint8Array}
+ */
+export function ml_dsa_65_sign(sk_bytes, message, context) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.ml_dsa_65_sign(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
  * Sign a message using the FIPS 204 internal sign primitive.
  *
  * `sk_bytes` is the expanded FIPS 204 secret key encoding,
@@ -166,6 +240,32 @@ export function ml_dsa_65_sign_internal(sk_bytes, message, rnd) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 204 message-level ML-DSA.Verify
+ * algorithm with context separation.
+ *
+ * Returns true if the signature is valid for the message, context,
+ * and verifying key. Invalid keys, signatures, or contexts return
+ * false.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function ml_dsa_65_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.ml_dsa_65_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -211,6 +311,30 @@ export function ml_dsa_87_keypair(seed) {
 }
 
 /**
+ * Sign a message using the FIPS 204 message-level ML-DSA.Sign
+ * deterministic variant with context separation.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @returns {Uint8Array}
+ */
+export function ml_dsa_87_sign(sk_bytes, message, context) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ret = wasm.ml_dsa_87_sign(ptr0, len0, ptr1, len1, ptr2, len2);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v4;
+}
+
+/**
  * Sign a message using the FIPS 204 internal sign primitive.
  *
  * `sk_bytes` is the expanded FIPS 204 secret key encoding,
@@ -236,6 +360,32 @@ export function ml_dsa_87_sign_internal(sk_bytes, message, rnd) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 204 message-level ML-DSA.Verify
+ * algorithm with context separation.
+ *
+ * Returns true if the signature is valid for the message, context,
+ * and verifying key. Invalid keys, signatures, or contexts return
+ * false.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function ml_dsa_87_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.ml_dsa_87_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**

@@ -554,3 +554,93 @@ Verification:
 
 Both passed. The package test run included 189 passing tests, including the
 existing ACVP audit vectors.
+
+## Experiment 3: Implement the ML-DSA high-level API
+
+### Goal
+
+Expose the standardized ML-DSA message-level signing API with context
+separation, while preserving the existing internal sign/verify wrappers used by
+ACVP vectors and low-level callers.
+
+### Questions
+
+This experiment should answer:
+
+- Can WebBuf expose ML-DSA.Sign / ML-DSA.Verify without breaking the existing
+  `Sign_internal` / `Verify_internal` API?
+- Can no-argument ML-DSA key generation follow the same TypeScript-side
+  randomness pattern used for ML-KEM?
+- Does the high-level signature path enforce FIPS 204 context separation?
+- Do internal ACVP vector tests continue to pass unchanged?
+
+### Method
+
+Add Rust/WASM exports for all three ML-DSA parameter sets:
+
+- `ml_dsa_44_sign`, `ml_dsa_65_sign`, and `ml_dsa_87_sign`;
+- `ml_dsa_44_verify`, `ml_dsa_65_verify`, and `ml_dsa_87_verify`.
+
+Those exports should use RustCrypto's message-level
+`sign_deterministic(message, context)` and `verify_with_context` APIs, not the
+internal primitives. Context strings longer than 255 bytes should fail signing
+and return `false` for verification.
+
+Add TypeScript wrappers:
+
+- `mlDsa*KeyPair()` generates a 32-byte seed with `FixedBuf.fromRandom(32)`;
+- `mlDsa*KeyPair(seed)` remains a compatibility overload;
+- `mlDsa*KeyPairDeterministic(seed)` is the explicit advanced alias;
+- `mlDsa*Sign(signingKey, message, context?)` signs at the message level;
+- `mlDsa*Verify(verifyingKey, message, signature, context?)` verifies at the
+  message level;
+- `mlDsa*SignDeterministic(...)` is an explicit alias for the deterministic
+  message-level signing variant.
+
+The existing `mlDsa*SignInternal` and `mlDsa*VerifyInternal` functions remain
+unchanged and public.
+
+### Implementation
+
+The Rust crate now decodes the existing expanded signing-key representation and
+calls RustCrypto's context-aware message-level signing and verification
+functions. The TypeScript package imports the new WASM exports, adds overloads
+for random key generation, and routes the high-level sign/verify APIs through
+empty context by default.
+
+Randomized or hedged ML-DSA signing was not added in this experiment. The
+preferred API uses the standardized deterministic ML-DSA.Sign variant because
+it is available from the pinned crate without adding RNG plumbing to the Rust
+WASM boundary. A future experiment can evaluate enabling upstream `rand_core`
+and passing TypeScript-generated randomness into a randomized signing export.
+
+The test suite now covers:
+
+- no-argument key generation and message-level sign/verify for ML-DSA-44,
+  ML-DSA-65, and ML-DSA-87;
+- deterministic keypair aliases;
+- deterministic message-level signing aliases;
+- successful verification with the correct context;
+- failed verification with the wrong context;
+- rejection of contexts longer than 255 bytes;
+- separation between message-level signatures and internal verification;
+- preservation of internal sign/verify for ACVP-style use;
+- unchanged ACVP vector coverage.
+
+### Result: Pass
+
+Experiment 3 passed. The ML-DSA package now has a safer message-level API with
+context separation, while preserving the internal ACVP-compatible primitives.
+
+Verification:
+
+- `cargo test -p webbuf_mldsa` in `rs`
+- `pnpm run build:wasm` in `ts/npm-webbuf-mldsa`
+- `pnpm run typecheck` in `ts/npm-webbuf-mldsa`
+- `pnpm test` in `ts/npm-webbuf-mldsa`
+
+All passed, except the Rust `wasm-pack-bundler.zsh` helper still exits nonzero
+after producing the bundle because it tries to remove a missing generated
+`README.md`. The produced bundle was synced and inlined successfully. The
+package test run included 191 passing tests, including the existing ACVP audit
+vectors.
