@@ -931,6 +931,99 @@ prefix or in a separate `internal` module to discourage application use.
 - A standalone `@webbuf/hkdf-sha256` package (defer until a second consumer
   needs it).
 
+### Implementation
+
+Built `ts/npm-webbuf-aesgcm-mlkem/` as a TypeScript-only package — no new Rust
+crate, mirroring the layout of `@webbuf/rw` (the only other TS-only package in
+the monorepo).
+
+**Source (`src/index.ts`, ~115 lines):**
+
+- 6-line `hkdfSha256L32(salt, ikm, info)` helper using `@webbuf/sha256`'s
+  `sha256Hmac`. Two HMAC calls: Extract gives the PRK, Expand gives the L=32
+  output (one HMAC iteration, since SHA-256 output already equals L).
+- `aesgcmMlkemEncrypt(encapKey, plaintext)` — calls `mlKem768Encapsulate` (which
+  generates `m` randomly via `FixedBuf.fromRandom` per `@webbuf/mlkem`'s issue
+  0002 high-level API), derives the AES key, encrypts via `aesgcmEncrypt` (which
+  generates the IV randomly and prepends it), prepends the version byte and KEM
+  ciphertext, returns the assembled `WebBuf`.
+- `_aesgcmMlkemEncryptDeterministic(encapKey, plaintext, m, iv)` — same shape
+  but takes caller-supplied `m` and `iv` for the KAT regression test.
+  Underscore-prefixed name signals "test-only / unsafe for application use".
+- `aesgcmMlkemDecrypt(decapKey, ciphertext)` — validates the minimum length and
+  version byte, slices out the KEM ciphertext (fixed 1088 bytes) and the AES
+  portion (`iv || ct || tag`), decapsulates, derives the AES key, decrypts via
+  `aesgcmDecrypt` (which extracts the IV from its input internally — confirmed
+  by reading `@webbuf/aesgcm`'s source before scaffolding).
+- Exported `AESGCM_MLKEM` constants object with `versionByte`,
+  `kemCiphertextSize`, `ivSize`, `tagSize`, `fixedOverhead`, `hkdfInfo`.
+
+**Tests (15 total, all pass):**
+
+- `test/index.test.ts` — 13 unit tests:
+  - Round-trip with random / empty / 64 KiB plaintexts.
+  - Default encryption is non-deterministic (two consecutive calls produce
+    different ciphertexts).
+  - Ciphertext length equals `1117 + plaintext.length` for several sizes (0, 1,
+    16, 100, 1024, 65535).
+  - Ciphertext starts with `0x01`.
+  - Wrong recipient (different keypair) throws.
+  - Tampered KEM ciphertext, tampered AES ciphertext, tampered IV all throw.
+  - Wrong version byte (`0x02`) throws with a `/version byte/` regex match.
+  - Truncated ciphertext (100 bytes) throws with `/too short/`.
+  - Issue-0004-Experiment-1 KAT seeds produce a usable keypair (sanity check;
+    the byte-precise assertion lives in `audit.test.ts`).
+- `test/audit.test.ts` — 2 audit tests:
+  - **Load-bearing KAT regression:** reproduces Experiment 1's deterministic
+    inputs (`d = 0x00..00`, `z = 0x11..11`, `m = 0x22..22`, `iv = 0x33..33`,
+    plaintext = `"hello, post-quantum"`), encrypts via
+    `_aesgcmMlkemEncryptDeterministic`, asserts
+    `sha256Hash(ciphertext).toHex() === "680beaa6...8ef240"`.
+  - Asserts the version byte (`0x01`), the KEM ciphertext prefix bytes, and the
+    IV at the expected offset (1089).
+
+The KAT regression matched on the first run — implementation matches the spec
+byte-for-byte.
+
+**Umbrella package:** added `@webbuf/aesgcm-mlkem` to
+`ts/npm-webbuf/package.json`'s peer deps and `export *` from
+`ts/npm-webbuf/src/index.ts`. Umbrella `pnpm run typecheck` and
+`pnpm run build:typescript` both clean.
+
+**Pipeline gotchas discovered:**
+
+- `@webbuf/aesgcm`'s `aesgcmEncrypt` already prepends the IV to its output
+  (`return WebBuf.concat([iv.buf, encrypted])`), so step 5 of the encrypt path
+  is a single call — no manual IV prepending needed. Same for `aesgcmDecrypt`:
+  it slices the IV from the front of its input. The decrypt path can pass
+  `iv || ct || tag` straight through.
+- `WebBuf.subarray` returns a `WebBuf` (which extends `Uint8Array`), so feeding
+  it back into `FixedBuf.fromBuf(KEM_CT_SIZE, ...)` works cleanly without an
+  extra `WebBuf.fromUint8Array` wrap. The wrap is still present for
+  explicitness.
+- The package has zero `peerDependencies` violations: all five peer deps
+  (`webbuf`, `fixedbuf`, `mlkem`, `sha256`, `aesgcm`) are workspace links and
+  present in the umbrella tree.
+
+### Result: Pass
+
+- `pnpm run typecheck` clean in `ts/npm-webbuf-aesgcm-mlkem`.
+- `pnpm test` reports 15/15 tests pass:
+  ```
+  ✓ test/audit.test.ts  (2 tests) — KAT regression matches
+  ✓ test/index.test.ts (13 tests) — round-trip, rejection, invariants
+  ```
+- `pnpm run build` produces a clean `dist/`.
+- Umbrella `pnpm run typecheck` and `pnpm run build:typescript` clean.
+- KAT SHA-256 matches Experiment 1's captured value
+  (`680beaa6d06d2324db4bf1545814f85fcc5f60ca7790ed5702779f497f8ef240`)
+  byte-for-byte on the first run — implementation faithfully matches the spec.
+
+The pure-PQ encryption package is shippable. The next experiment builds
+`@webbuf/aesgcm-p256dh-mlkem` using the same scaffold plus the hybrid IKM
+(classical X-coord || KEM shared secret) and a different version byte (`0x02`)
+and info string (`webbuf:aesgcm-p256dh-mlkem v1`).
+
 ## Plan
 
 Pin the key schedule and wire format first (Experiment 1, above), then build the
