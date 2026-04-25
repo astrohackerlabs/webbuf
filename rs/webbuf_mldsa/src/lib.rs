@@ -22,7 +22,8 @@ macro_rules! mldsa_impl {
         $sign_fn:ident,
         $verify_fn:ident,
         $sign_context_fn:ident,
-        $verify_context_fn:ident
+        $verify_context_fn:ident,
+        $sign_hedged_fn:ident
     ) => {
         /// Deterministically generate a keypair from a 32-byte seed.
         ///
@@ -139,6 +140,40 @@ macro_rules! mldsa_impl {
             };
             vk.verify_with_context(message, context, &sig)
         }
+
+        /// Sign a message using the FIPS 204 message-level ML-DSA.Sign hedged
+        /// variant with caller-supplied randomness.
+        ///
+        /// `addrnd` is a 32-byte randomness value. The TypeScript wrapper
+        /// generates this with `crypto.getRandomValues` via
+        /// `FixedBuf.fromRandom(32)`. Equivalent to `sign_randomized` in the
+        /// upstream `ml-dsa` crate, but reachable without the `rand_core`
+        /// feature: we manually construct `M' = 0x00 || ctx_len || ctx || M`
+        /// per FIPS 204 §5.4 and call the public `sign_internal(Mp, rnd)`.
+        /// Both paths converge on the same `raw_sign_mu` call.
+        #[cfg_attr(feature = "wasm", wasm_bindgen)]
+        pub fn $sign_hedged_fn(
+            sk_bytes: &[u8],
+            message: &[u8],
+            context: &[u8],
+            addrnd: &[u8],
+        ) -> Result<Vec<u8>, String> {
+            let mut sk_arr: ExpandedSigningKeyBytes<$kem> = Default::default();
+            if sk_bytes.len() != sk_arr.len() {
+                return Err(format!("sk must be exactly {} bytes", sk_arr.len()));
+            }
+            if context.len() > 255 {
+                return Err("context must be at most 255 bytes".to_string());
+            }
+            sk_arr.copy_from_slice(sk_bytes);
+            #[allow(deprecated)]
+            let sk = ExpandedSigningKey::<$kem>::from_expanded(&sk_arr);
+            let rnd_b32 = slice_to_b32(addrnd, "addrnd")?;
+            let ctx_len_byte = [context.len() as u8];
+            let mp: [&[u8]; 4] = [&[0u8], &ctx_len_byte, context, message];
+            let sig = sk.sign_internal(&mp, &rnd_b32);
+            Ok(sig.encode().to_vec())
+        }
     };
 }
 
@@ -148,7 +183,8 @@ mldsa_impl!(
     ml_dsa_44_sign_internal,
     ml_dsa_44_verify_internal,
     ml_dsa_44_sign,
-    ml_dsa_44_verify
+    ml_dsa_44_verify,
+    ml_dsa_44_sign_hedged
 );
 mldsa_impl!(
     MlDsa65,
@@ -156,7 +192,8 @@ mldsa_impl!(
     ml_dsa_65_sign_internal,
     ml_dsa_65_verify_internal,
     ml_dsa_65_sign,
-    ml_dsa_65_verify
+    ml_dsa_65_verify,
+    ml_dsa_65_sign_hedged
 );
 mldsa_impl!(
     MlDsa87,
@@ -164,7 +201,8 @@ mldsa_impl!(
     ml_dsa_87_sign_internal,
     ml_dsa_87_verify_internal,
     ml_dsa_87_sign,
-    ml_dsa_87_verify
+    ml_dsa_87_verify,
+    ml_dsa_87_sign_hedged
 );
 
 #[cfg(test)]
@@ -300,5 +338,127 @@ mod tests {
 
         assert!(ml_dsa_44_sign(sk, msg, &long_ctx).is_err());
         assert!(!ml_dsa_44_verify(vk, msg, &[0u8; 2420], &long_ctx));
+    }
+
+    #[test]
+    fn test_ml_dsa_44_hedged_round_trip() {
+        let seed = [11u8; 32];
+        let addrnd = [12u8; 32];
+        let msg = b"hedged 44";
+        let ctx = b"webbuf";
+
+        let keypair = ml_dsa_44_keypair(&seed).unwrap();
+        let vk = &keypair[..1312];
+        let sk = &keypair[1312..];
+
+        let sig = ml_dsa_44_sign_hedged(sk, msg, ctx, &addrnd).unwrap();
+        assert_eq!(sig.len(), 2420);
+        assert!(ml_dsa_44_verify(vk, msg, &sig, ctx));
+        assert!(!ml_dsa_44_verify(vk, msg, &sig, b"wrong"));
+        assert!(!ml_dsa_44_verify_internal(vk, msg, &sig));
+    }
+
+    #[test]
+    fn test_ml_dsa_65_hedged_round_trip() {
+        let seed = [13u8; 32];
+        let addrnd = [14u8; 32];
+        let msg = b"hedged 65";
+
+        let keypair = ml_dsa_65_keypair(&seed).unwrap();
+        let vk = &keypair[..1952];
+        let sk = &keypair[1952..];
+
+        let sig = ml_dsa_65_sign_hedged(sk, msg, b"", &addrnd).unwrap();
+        assert_eq!(sig.len(), 3309);
+        assert!(ml_dsa_65_verify(vk, msg, &sig, b""));
+    }
+
+    #[test]
+    fn test_ml_dsa_87_hedged_round_trip() {
+        let seed = [15u8; 32];
+        let addrnd = [16u8; 32];
+        let msg = b"hedged 87";
+
+        let keypair = ml_dsa_87_keypair(&seed).unwrap();
+        let vk = &keypair[..2592];
+        let sk = &keypair[2592..];
+
+        let sig = ml_dsa_87_sign_hedged(sk, msg, b"", &addrnd).unwrap();
+        assert_eq!(sig.len(), 4627);
+        assert!(ml_dsa_87_verify(vk, msg, &sig, b""));
+    }
+
+    #[test]
+    fn test_hedged_differs_from_deterministic() {
+        let seed = [17u8; 32];
+        let addrnd = [18u8; 32];
+        let msg = b"hedged vs deterministic";
+        let ctx = b"compare";
+
+        let keypair = ml_dsa_65_keypair(&seed).unwrap();
+        let sk = &keypair[1952..];
+
+        let det_sig = ml_dsa_65_sign(sk, msg, ctx).unwrap();
+        let hedged_sig = ml_dsa_65_sign_hedged(sk, msg, ctx, &addrnd).unwrap();
+        assert_ne!(det_sig, hedged_sig);
+    }
+
+    /// Load-bearing regression test: confirms our manually constructed
+    /// `M' = 0x00 || ctx_len || ctx || M` matches what `sign_deterministic`
+    /// builds via `MuBuilder::new(tr, ctx).message(M)`. If this test ever
+    /// fails after an `ml-dsa` upgrade, the byte-equivalence reasoning in
+    /// issue 0003 has broken and the wrapper needs to be revisited.
+    #[test]
+    fn test_hedged_with_zero_rnd_matches_deterministic() {
+        let seed = [19u8; 32];
+        let zero_rnd = [0u8; 32];
+        let msg = b"zero-rnd equivalence";
+        let ctx = b"context";
+
+        let keypair = ml_dsa_65_keypair(&seed).unwrap();
+        let sk = &keypair[1952..];
+
+        let det_sig = ml_dsa_65_sign(sk, msg, ctx).unwrap();
+        let hedged_zero_sig = ml_dsa_65_sign_hedged(sk, msg, ctx, &zero_rnd).unwrap();
+        assert_eq!(det_sig, hedged_zero_sig);
+    }
+
+    #[test]
+    fn test_hedged_with_empty_context_matches_zero_rnd_no_ctx() {
+        let seed = [20u8; 32];
+        let zero_rnd = [0u8; 32];
+        let msg = b"empty ctx";
+
+        let keypair = ml_dsa_65_keypair(&seed).unwrap();
+        let sk = &keypair[1952..];
+
+        let det_sig = ml_dsa_65_sign(sk, msg, b"").unwrap();
+        let hedged_zero_sig = ml_dsa_65_sign_hedged(sk, msg, b"", &zero_rnd).unwrap();
+        assert_eq!(det_sig, hedged_zero_sig);
+    }
+
+    #[test]
+    fn test_hedged_bad_inputs() {
+        let seed = [21u8; 32];
+        let keypair = ml_dsa_65_keypair(&seed).unwrap();
+        let sk = &keypair[1952..];
+
+        // wrong addrnd length
+        let short_rnd = [0u8; 16];
+        assert!(ml_dsa_65_sign_hedged(sk, b"msg", b"", &short_rnd)
+            .unwrap_err()
+            .contains("addrnd"));
+
+        // context too long
+        let long_ctx = [0u8; 256];
+        let rnd = [0u8; 32];
+        assert!(ml_dsa_65_sign_hedged(sk, b"msg", &long_ctx, &rnd)
+            .unwrap_err()
+            .contains("255"));
+
+        // malformed sk
+        assert!(ml_dsa_65_sign_hedged(&[0u8; 100], b"msg", b"", &rnd)
+            .unwrap_err()
+            .contains("sk"));
     }
 }

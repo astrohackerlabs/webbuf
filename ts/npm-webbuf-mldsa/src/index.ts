@@ -1,16 +1,19 @@
 import {
   ml_dsa_44_keypair,
   ml_dsa_44_sign,
+  ml_dsa_44_sign_hedged,
   ml_dsa_44_sign_internal,
   ml_dsa_44_verify,
   ml_dsa_44_verify_internal,
   ml_dsa_65_keypair,
   ml_dsa_65_sign,
+  ml_dsa_65_sign_hedged,
   ml_dsa_65_sign_internal,
   ml_dsa_65_verify,
   ml_dsa_65_verify_internal,
   ml_dsa_87_keypair,
   ml_dsa_87_sign,
+  ml_dsa_87_sign_hedged,
   ml_dsa_87_sign_internal,
   ml_dsa_87_verify,
   ml_dsa_87_verify_internal,
@@ -82,7 +85,13 @@ export function mlDsa44Sign(
   message: WebBuf,
   context?: WebBuf,
 ): FixedBuf<2420> {
-  return mlDsa44SignDeterministic(signingKey, message, context);
+  const out = ml_dsa_44_sign_hedged(
+    signingKey.buf,
+    message,
+    defaultContext(context),
+    randomSeed().buf,
+  );
+  return FixedBuf.fromBuf(2420, WebBuf.fromUint8Array(out));
 }
 
 export function mlDsa44SignDeterministic(
@@ -145,7 +154,13 @@ export function mlDsa65Sign(
   message: WebBuf,
   context?: WebBuf,
 ): FixedBuf<3309> {
-  return mlDsa65SignDeterministic(signingKey, message, context);
+  const out = ml_dsa_65_sign_hedged(
+    signingKey.buf,
+    message,
+    defaultContext(context),
+    randomSeed().buf,
+  );
+  return FixedBuf.fromBuf(3309, WebBuf.fromUint8Array(out));
 }
 
 export function mlDsa65SignDeterministic(
@@ -208,7 +223,13 @@ export function mlDsa87Sign(
   message: WebBuf,
   context?: WebBuf,
 ): FixedBuf<4627> {
-  return mlDsa87SignDeterministic(signingKey, message, context);
+  const out = ml_dsa_87_sign_hedged(
+    signingKey.buf,
+    message,
+    defaultContext(context),
+    randomSeed().buf,
+  );
+  return FixedBuf.fromBuf(4627, WebBuf.fromUint8Array(out));
 }
 
 export function mlDsa87SignDeterministic(

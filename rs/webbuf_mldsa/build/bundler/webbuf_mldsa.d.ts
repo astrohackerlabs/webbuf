@@ -16,6 +16,20 @@ export function ml_dsa_44_keypair(seed: Uint8Array): Uint8Array;
 export function ml_dsa_44_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 204 message-level ML-DSA.Sign hedged
+ * variant with caller-supplied randomness.
+ *
+ * `addrnd` is a 32-byte randomness value. The TypeScript wrapper
+ * generates this with `crypto.getRandomValues` via
+ * `FixedBuf.fromRandom(32)`. Equivalent to `sign_randomized` in the
+ * upstream `ml-dsa` crate, but reachable without the `rand_core`
+ * feature: we manually construct `M' = 0x00 || ctx_len || ctx || M`
+ * per FIPS 204 §5.4 and call the public `sign_internal(Mp, rnd)`.
+ * Both paths converge on the same `raw_sign_mu` call.
+ */
+export function ml_dsa_44_sign_hedged(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 204 internal sign primitive.
  *
  * `sk_bytes` is the expanded FIPS 204 secret key encoding,
@@ -59,6 +73,20 @@ export function ml_dsa_65_keypair(seed: Uint8Array): Uint8Array;
 export function ml_dsa_65_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 204 message-level ML-DSA.Sign hedged
+ * variant with caller-supplied randomness.
+ *
+ * `addrnd` is a 32-byte randomness value. The TypeScript wrapper
+ * generates this with `crypto.getRandomValues` via
+ * `FixedBuf.fromRandom(32)`. Equivalent to `sign_randomized` in the
+ * upstream `ml-dsa` crate, but reachable without the `rand_core`
+ * feature: we manually construct `M' = 0x00 || ctx_len || ctx || M`
+ * per FIPS 204 §5.4 and call the public `sign_internal(Mp, rnd)`.
+ * Both paths converge on the same `raw_sign_mu` call.
+ */
+export function ml_dsa_65_sign_hedged(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 204 internal sign primitive.
  *
  * `sk_bytes` is the expanded FIPS 204 secret key encoding,
@@ -100,6 +128,20 @@ export function ml_dsa_87_keypair(seed: Uint8Array): Uint8Array;
  * deterministic variant with context separation.
  */
 export function ml_dsa_87_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array): Uint8Array;
+
+/**
+ * Sign a message using the FIPS 204 message-level ML-DSA.Sign hedged
+ * variant with caller-supplied randomness.
+ *
+ * `addrnd` is a 32-byte randomness value. The TypeScript wrapper
+ * generates this with `crypto.getRandomValues` via
+ * `FixedBuf.fromRandom(32)`. Equivalent to `sign_randomized` in the
+ * upstream `ml-dsa` crate, but reachable without the `rand_core`
+ * feature: we manually construct `M' = 0x00 || ctx_len || ctx || M`
+ * per FIPS 204 §5.4 and call the public `sign_internal(Mp, rnd)`.
+ * Both paths converge on the same `raw_sign_mu` call.
+ */
+export function ml_dsa_87_sign_hedged(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
 
 /**
  * Sign a message using the FIPS 204 internal sign primitive.

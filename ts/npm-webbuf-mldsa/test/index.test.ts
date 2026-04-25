@@ -83,7 +83,24 @@ describe("ML-DSA round-trip", () => {
     expect(kp1.signingKey.toHex()).toBe(kp2.signingKey.toHex());
   });
 
-  it("deterministic sign aliases produce identical signatures", () => {
+  it("default sign is hedged: same key + message produces different signatures", () => {
+    const seed = FixedBuf.fromHex(
+      32,
+      "0202020202020202020202020202020202020202020202020202020202020202",
+    );
+    const message = WebBuf.fromUtf8("hedged");
+    const context = WebBuf.fromUtf8("domain");
+
+    const { verifyingKey, signingKey } = mlDsa65KeyPair(seed);
+    const sig1 = mlDsa65Sign(signingKey, message, context);
+    const sig2 = mlDsa65Sign(signingKey, message, context);
+    expect(sig1.toHex()).not.toBe(sig2.toHex());
+    expect(mlDsa65Verify(verifyingKey, message, sig1, context)).toBe(true);
+    expect(mlDsa65Verify(verifyingKey, message, sig2, context)).toBe(true);
+    expect(mlDsa65VerifyInternal(verifyingKey, message, sig1)).toBe(false);
+  });
+
+  it("SignDeterministic is reproducible: same key + message produces identical signatures", () => {
     const seed = FixedBuf.fromHex(
       32,
       "0202020202020202020202020202020202020202020202020202020202020202",
@@ -91,10 +108,11 @@ describe("ML-DSA round-trip", () => {
     const message = WebBuf.fromUtf8("deterministic");
     const context = WebBuf.fromUtf8("domain");
 
-    const { signingKey } = mlDsa65KeyPair(seed);
-    const sig1 = mlDsa65Sign(signingKey, message, context);
+    const { verifyingKey, signingKey } = mlDsa65KeyPair(seed);
+    const sig1 = mlDsa65SignDeterministic(signingKey, message, context);
     const sig2 = mlDsa65SignDeterministic(signingKey, message, context);
     expect(sig1.toHex()).toBe(sig2.toHex());
+    expect(mlDsa65Verify(verifyingKey, message, sig1, context)).toBe(true);
   });
 
   it("message-level signatures are context separated", () => {
