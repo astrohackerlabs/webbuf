@@ -2,8 +2,9 @@
 
 ## Open
 
-| #   | Title | Opened |
-| --- | ----- | ------ |
+| #                                           | Title                         | Opened     |
+| ------------------------------------------- | ----------------------------- | ---------- |
+| [0003](0003-mldsa-hedged-signing/README.md) | ML-DSA hedged signing default | 2026-04-25 |
 
 ## Closed
 
