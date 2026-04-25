@@ -77,6 +77,36 @@ export function slh_dsa_sha2_128f_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_sha2_128f_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_128f_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -102,6 +132,28 @@ export function slh_dsa_sha2_128f_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_sha2_128f_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_128f_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -152,6 +204,36 @@ export function slh_dsa_sha2_128s_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_sha2_128s_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_128s_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -177,6 +259,28 @@ export function slh_dsa_sha2_128s_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_sha2_128s_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_128s_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -227,6 +331,36 @@ export function slh_dsa_sha2_192f_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_sha2_192f_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_192f_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -252,6 +386,28 @@ export function slh_dsa_sha2_192f_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_sha2_192f_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_192f_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -302,6 +458,36 @@ export function slh_dsa_sha2_192s_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_sha2_192s_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_192s_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -327,6 +513,28 @@ export function slh_dsa_sha2_192s_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_sha2_192s_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_192s_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -377,6 +585,36 @@ export function slh_dsa_sha2_256f_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_sha2_256f_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_256f_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -402,6 +640,28 @@ export function slh_dsa_sha2_256f_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_sha2_256f_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_256f_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -452,6 +712,36 @@ export function slh_dsa_sha2_256s_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_sha2_256s_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_256s_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -477,6 +767,28 @@ export function slh_dsa_sha2_256s_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_sha2_256s_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_sha2_256s_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -527,6 +839,36 @@ export function slh_dsa_shake_128f_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_shake_128f_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_128f_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -552,6 +894,28 @@ export function slh_dsa_shake_128f_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_shake_128f_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_128f_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -602,6 +966,36 @@ export function slh_dsa_shake_128s_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_shake_128s_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_128s_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -627,6 +1021,28 @@ export function slh_dsa_shake_128s_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_shake_128s_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_128s_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -677,6 +1093,36 @@ export function slh_dsa_shake_192f_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_shake_192f_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_192f_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -702,6 +1148,28 @@ export function slh_dsa_shake_192f_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_shake_192f_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_192f_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -752,6 +1220,36 @@ export function slh_dsa_shake_192s_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_shake_192s_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_192s_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -777,6 +1275,28 @@ export function slh_dsa_shake_192s_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_shake_192s_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_192s_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -827,6 +1347,36 @@ export function slh_dsa_shake_256f_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_shake_256f_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_256f_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -852,6 +1402,28 @@ export function slh_dsa_shake_256f_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_shake_256f_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_256f_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**
@@ -902,6 +1474,36 @@ export function slh_dsa_shake_256s_keypair(sk_seed, sk_prf, pk_seed) {
 }
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ * @param {Uint8Array} sk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} context
+ * @param {Uint8Array} addrnd
+ * @returns {Uint8Array}
+ */
+export function slh_dsa_shake_256s_sign(sk_bytes, message, context, addrnd) {
+    const ptr0 = passArray8ToWasm0(sk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(addrnd, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_256s_sign(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    if (ret[3]) {
+        throw takeFromExternrefTable0(ret[2]);
+    }
+    var v5 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
+    wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
+    return v5;
+}
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -927,6 +1529,28 @@ export function slh_dsa_shake_256s_sign_internal(sk_bytes, message, opt_rand) {
     var v4 = getArrayU8FromWasm0(ret[0], ret[1]).slice();
     wasm.__wbindgen_free(ret[0], ret[1] * 1, 1);
     return v4;
+}
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ * @param {Uint8Array} vk_bytes
+ * @param {Uint8Array} message
+ * @param {Uint8Array} sig_bytes
+ * @param {Uint8Array} context
+ * @returns {boolean}
+ */
+export function slh_dsa_shake_256s_verify(vk_bytes, message, sig_bytes, context) {
+    const ptr0 = passArray8ToWasm0(vk_bytes, wasm.__wbindgen_malloc);
+    const len0 = WASM_VECTOR_LEN;
+    const ptr1 = passArray8ToWasm0(message, wasm.__wbindgen_malloc);
+    const len1 = WASM_VECTOR_LEN;
+    const ptr2 = passArray8ToWasm0(sig_bytes, wasm.__wbindgen_malloc);
+    const len2 = WASM_VECTOR_LEN;
+    const ptr3 = passArray8ToWasm0(context, wasm.__wbindgen_malloc);
+    const len3 = WASM_VECTOR_LEN;
+    const ret = wasm.slh_dsa_shake_256s_verify(ptr0, len0, ptr1, len1, ptr2, len2, ptr3, len3);
+    return ret !== 0;
 }
 
 /**

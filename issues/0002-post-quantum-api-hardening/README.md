@@ -644,3 +644,97 @@ after producing the bundle because it tries to remove a missing generated
 `README.md`. The produced bundle was synced and inlined successfully. The
 package test run included 191 passing tests, including the existing ACVP audit
 vectors.
+
+## Experiment 4: Implement the SLH-DSA high-level API
+
+### Goal
+
+Expose SLH-DSA message-level signing and verification with context separation
+and hedged signing defaults, while preserving the existing internal wrappers
+used by ACVP vectors and low-level callers.
+
+### Questions
+
+This experiment should answer:
+
+- Can WebBuf expose SLH-DSA.Sign / SLH-DSA.Verify for every SHA2 and SHAKE
+  parameter set without breaking the internal API?
+- Can no-argument SLH-DSA key generation generate all three required seeds
+  internally?
+- Can default signing be hedged by generating `addrnd` in TypeScript?
+- Do deterministic aliases and internal APIs remain available for reproducible
+  tests and ACVP vectors?
+
+### Method
+
+Add Rust/WASM exports for all twelve SLH-DSA parameter sets:
+
+- message-level `slh_dsa_*_sign`;
+- message-level `slh_dsa_*_verify`.
+
+Those exports use the pinned crate's `try_sign_with_context` and
+`try_verify_with_context` APIs. The signing export accepts either an empty
+`addrnd` value for deterministic signing or an `n`-byte value for hedged
+signing. Contexts longer than 255 bytes fail signing and return `false` for
+verification.
+
+Add TypeScript wrappers:
+
+- `slhDsa*KeyPair()` generates `skSeed`, `skPrf`, and `pkSeed`;
+- `slhDsa*KeyPair(skSeed, skPrf, pkSeed)` remains a compatibility overload;
+- `slhDsa*KeyPairDeterministic(...)` is the explicit seeded alias;
+- `slhDsa*Sign(signingKey, message, context?)` generates `addrnd` and signs at
+  the message level;
+- `slhDsa*SignDeterministic(signingKey, message, context?)` signs at the
+  message level without caller-provided randomness;
+- `slhDsa*Verify(verifyingKey, message, signature, context?)` verifies at the
+  message level.
+
+The existing `slhDsa*SignInternal` and `slhDsa*VerifyInternal` functions remain
+unchanged and public.
+
+### Implementation
+
+The Rust crate now exports message-level sign and verify wrappers for every
+SHA2 and SHAKE parameter set. The TypeScript package imports those exports and
+adds high-level overloads and aliases for the full parameter-set matrix.
+
+Default high-level signing is hedged. The TypeScript wrapper generates an
+`addrnd` buffer with the parameter set's seed size and passes it into the
+message-level Rust/WASM export. Deterministic message-level signing remains
+available through explicit `SignDeterministic` aliases.
+
+The test suite now covers:
+
+- no-argument key generation and high-level sign/verify for representative
+  SHA2 and SHAKE parameter sets;
+- deterministic seeded keypair aliases;
+- deterministic message-level signing aliases;
+- default hedged signing producing distinct signatures for the same
+  key/message;
+- successful verification with the correct context;
+- failed verification with the wrong context;
+- rejection of contexts longer than 255 bytes;
+- separation between message-level signatures and internal verification;
+- preservation of internal sign/verify for ACVP-style use;
+- unchanged ACVP vector coverage.
+
+### Result: Pass
+
+Experiment 4 passed. The SLH-DSA package now has a safer message-level API with
+context separation and hedged signing defaults, while preserving the internal
+ACVP-compatible primitives.
+
+Verification:
+
+- `cargo test -p webbuf_slhdsa` in `rs`
+- `pnpm run build:wasm` in `ts/npm-webbuf-slhdsa`
+- `pnpm run typecheck` in `ts/npm-webbuf-slhdsa`
+- `pnpm test` in `ts/npm-webbuf-slhdsa`
+- `pnpm run build:typescript` in `ts/npm-webbuf-slhdsa`
+
+All passed, except the Rust `wasm-pack-bundler.zsh` helper still exits nonzero
+after producing the bundle because it tries to remove a missing generated
+`README.md`. The produced bundle was synced and inlined successfully. The
+package test run included 182 passing tests, including the existing ACVP audit
+vectors.

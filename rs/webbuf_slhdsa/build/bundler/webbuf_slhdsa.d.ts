@@ -10,6 +10,15 @@
 export function slh_dsa_sha2_128f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_sha2_128f_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -18,6 +27,12 @@ export function slh_dsa_sha2_128f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arra
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_sha2_128f_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_sha2_128f_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -36,6 +51,15 @@ export function slh_dsa_sha2_128f_verify_internal(vk_bytes: Uint8Array, message:
 export function slh_dsa_sha2_128s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_sha2_128s_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -44,6 +68,12 @@ export function slh_dsa_sha2_128s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arra
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_sha2_128s_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_sha2_128s_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -62,6 +92,15 @@ export function slh_dsa_sha2_128s_verify_internal(vk_bytes: Uint8Array, message:
 export function slh_dsa_sha2_192f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_sha2_192f_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -70,6 +109,12 @@ export function slh_dsa_sha2_192f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arra
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_sha2_192f_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_sha2_192f_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -88,6 +133,15 @@ export function slh_dsa_sha2_192f_verify_internal(vk_bytes: Uint8Array, message:
 export function slh_dsa_sha2_192s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_sha2_192s_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -96,6 +150,12 @@ export function slh_dsa_sha2_192s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arra
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_sha2_192s_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_sha2_192s_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -114,6 +174,15 @@ export function slh_dsa_sha2_192s_verify_internal(vk_bytes: Uint8Array, message:
 export function slh_dsa_sha2_256f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_sha2_256f_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -122,6 +191,12 @@ export function slh_dsa_sha2_256f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arra
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_sha2_256f_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_sha2_256f_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -140,6 +215,15 @@ export function slh_dsa_sha2_256f_verify_internal(vk_bytes: Uint8Array, message:
 export function slh_dsa_sha2_256s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_sha2_256s_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -148,6 +232,12 @@ export function slh_dsa_sha2_256s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arra
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_sha2_256s_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_sha2_256s_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -166,6 +256,15 @@ export function slh_dsa_sha2_256s_verify_internal(vk_bytes: Uint8Array, message:
 export function slh_dsa_shake_128f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_shake_128f_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -174,6 +273,12 @@ export function slh_dsa_shake_128f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arr
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_shake_128f_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_shake_128f_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -192,6 +297,15 @@ export function slh_dsa_shake_128f_verify_internal(vk_bytes: Uint8Array, message
 export function slh_dsa_shake_128s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_shake_128s_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -200,6 +314,12 @@ export function slh_dsa_shake_128s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arr
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_shake_128s_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_shake_128s_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -218,6 +338,15 @@ export function slh_dsa_shake_128s_verify_internal(vk_bytes: Uint8Array, message
 export function slh_dsa_shake_192f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_shake_192f_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -226,6 +355,12 @@ export function slh_dsa_shake_192f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arr
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_shake_192f_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_shake_192f_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -244,6 +379,15 @@ export function slh_dsa_shake_192f_verify_internal(vk_bytes: Uint8Array, message
 export function slh_dsa_shake_192s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_shake_192s_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -252,6 +396,12 @@ export function slh_dsa_shake_192s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arr
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_shake_192s_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_shake_192s_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -270,6 +420,15 @@ export function slh_dsa_shake_192s_verify_internal(vk_bytes: Uint8Array, message
 export function slh_dsa_shake_256f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_shake_256f_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -278,6 +437,12 @@ export function slh_dsa_shake_256f_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arr
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_shake_256f_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_shake_256f_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
@@ -296,6 +461,15 @@ export function slh_dsa_shake_256f_verify_internal(vk_bytes: Uint8Array, message
 export function slh_dsa_shake_256s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Array, pk_seed: Uint8Array): Uint8Array;
 
 /**
+ * Sign a message using the FIPS 205 SLH-DSA.Sign algorithm with
+ * context separation.
+ *
+ * `addrnd` is either empty for deterministic signing or exactly n
+ * bytes for hedged signing.
+ */
+export function slh_dsa_shake_256s_sign(sk_bytes: Uint8Array, message: Uint8Array, context: Uint8Array, addrnd: Uint8Array): Uint8Array;
+
+/**
  * Sign a message using the FIPS 205 internal sign primitive.
  *
  * `sk_bytes` is the FIPS 205 secret key encoding. `message` is the
@@ -304,6 +478,12 @@ export function slh_dsa_shake_256s_keypair(sk_seed: Uint8Array, sk_prf: Uint8Arr
  * variant: caller-provided randomizer).
  */
 export function slh_dsa_shake_256s_sign_internal(sk_bytes: Uint8Array, message: Uint8Array, opt_rand: Uint8Array): Uint8Array;
+
+/**
+ * Verify a signature using the FIPS 205 SLH-DSA.Verify algorithm
+ * with context separation.
+ */
+export function slh_dsa_shake_256s_verify(vk_bytes: Uint8Array, message: Uint8Array, sig_bytes: Uint8Array, context: Uint8Array): boolean;
 
 /**
  * Verify a signature using the FIPS 205 internal verify primitive.
