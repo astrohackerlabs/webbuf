@@ -1,0 +1,61 @@
+{
+  "name": "@webbuf/x25519",
+  "version": "3.6.0",
+  "description": "Rust/wasm X25519 ECDH (RFC 7748) for the web, node.js, deno, and bun.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/identellica/webbuf"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "clean": "rimraf dist",
+    "test": "vitest --run",
+    "test:browser": "vitest --run --browser",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --fix",
+    "format": "prettier --write . --ignore-path ../.prettierignore",
+    "fix": "pnpm run typecheck && pnpm run lint && pnpm run format",
+    "sync:from-rust": "cp -r ../../rs/webbuf_x25519/build/bundler/* src/rs-webbuf_x25519-bundler/",
+    "build": "pnpm run build:wasm && pnpm run build:typescript",
+    "build:bundler-to-inline-base64": "cp -r src/rs-webbuf_x25519-bundler/* src/rs-webbuf_x25519-inline-base64/",
+    "build:inline-wasm": "tsx build-inline-wasm.ts",
+    "build:wasm": "pnpm run build:bundler-to-inline-base64 && pnpm run build:inline-wasm",
+    "build:typescript": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run clean && pnpm run build"
+  },
+  "engines": {
+    "node": ">=20.8.0"
+  },
+  "packageManager": "pnpm@9.12.3+sha256.24235772cc4ac82a62627cd47f834c72667a2ce87799a846ec4e8e555e2d4b8b",
+  "keywords": [
+    "x25519",
+    "curve25519",
+    "ecdh",
+    "diffie-hellman",
+    "rfc7748",
+    "elliptic-curve",
+    "rust",
+    "wasm"
+  ],
+  "author": "Identellica LLC",
+  "license": "MIT",
+  "peerDependencies": {
+    "@webbuf/fixedbuf": "workspace:^",
+    "@webbuf/webbuf": "workspace:^"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.13.2",
+    "buffer": "^6.0.3",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.21.0",
+    "vite": "^6.1.0",
+    "vitest": "^3.0.5"
+  }
+}

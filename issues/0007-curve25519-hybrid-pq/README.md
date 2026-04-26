@@ -1140,10 +1140,105 @@ After the new package builds cleanly, add it to the umbrella:
 
 ### Implementation
 
-_(To be filled in when the experiment is run.)_
+Built `@webbuf/x25519` end-to-end against the Experiment 1 pinned-dependency
+baseline. Files created:
 
-### Result
+- `rs/webbuf_x25519/Cargo.toml` — exact pins per Experiment 1
+  (`x25519-dalek = "=2.0.1"`, `curve25519-dalek = "=4.1.3"`,
+  `default-features = false`, feature flags `static_secrets`, `zeroize`,
+  `precomputed-tables`).
+- `rs/webbuf_x25519/src/lib.rs` — two `wasm_bindgen` exports
+  (`x25519_public_key_create`, `x25519_shared_secret_raw`) plus six `mod tests`
+  cases.
+- `rs/webbuf_x25519/wasm-pack-bundler.zsh` — the defensive `rm -f` cleanup
+  pattern from `webbuf_mlkem`.
+- `rs/webbuf_x25519/LICENSE` (MIT).
+- `rs/Cargo.toml` workspace `members` and `[patch.crates-io]` updated.
+- `ts/npm-webbuf-x25519/` — `package.json`, `tsconfig.json`,
+  `tsconfig.build.json`, `build-inline-wasm.ts`, `src/index.ts`,
+  `test/index.test.ts`, `test/audit.test.ts`, `README.md`, `LICENSE`, and the
+  bundler / inline-base64 directories populated by the build pipeline.
+- `ts/npm-webbuf/package.json` and `ts/npm-webbuf/src/index.ts` updated to
+  re-export the new package alongside the other primitives.
 
-_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
-green, with notable observations — the small-order test outcome, the WASM size,
-any feature-flag adjustments — recorded.)_
+The Rust `lib.rs` is intentionally flat (no submodule split) — only two
+functions in the WASM-bindgen surface, so the indirection wouldn't earn its
+keep. Doc-comments on each exported function call out the clamping behavior and
+the contributory-check guarantee.
+
+### Result: Pass
+
+**Tests (6/6 Rust, 15/15 TypeScript):**
+
+- `cargo test -p webbuf_x25519 --release` — 6/6 pass:
+  `rfc_7748_6_1_alice_bob_worked_example`,
+  `rfc_7748_5_2_single_iteration_vector`, `small_order_public_keys_are_rejected`
+  (all seven canonical small-order u-coordinates rejected with the stable
+  `non-contributory` error message), `clamping_is_internal`,
+  `round_trip_hard_coded_keys`, `input_length_errors`.
+- `pnpm test` in `ts/npm-webbuf-x25519` — 15/15 pass: 4 audit (RFC 7748 §6.1
+  Alice's pub, Bob's pub, both-direction shared secret; RFC 7748 §5.2
+  single-iteration vector) + 11 unit (random round-trip, length invariants,
+  deterministic public-key derivation, all seven small-order rejections each as
+  a separate `it()`, and a `FixedBuf` length-mismatch sanity check).
+
+**Builds:**
+
+- `cargo build -p webbuf_x25519` clean.
+- `./wasm-pack-bundler.zsh` clean.
+- `pnpm run typecheck` and `pnpm run build` clean in `ts/npm-webbuf-x25519`.
+- `pnpm run typecheck` and `pnpm run build:typescript` clean in the umbrella
+  `ts/npm-webbuf` after the re-export was added.
+
+**WASM size — better than expected:**
+
+- `webbuf_x25519_bg.wasm`: **68,185 bytes** (~67 KiB).
+- For comparison: `webbuf_p256_bg.wasm` is 79,706 bytes (~78 KiB);
+  `webbuf_secp256k1_bg.wasm` is 101,082 bytes (~99 KiB).
+- The `precomputed-tables` feature is on and `webbuf_x25519` is still smaller
+  than `webbuf_p256`. **Decision: ship with `precomputed-tables` enabled.** The
+  Experiment 1 deferred decision is now closed.
+
+**`getrandom` not in the dep graph:**
+
+- `awk '/name = "webbuf_x25519"/,/^$/' rs/Cargo.lock` shows the only direct deps
+  are `curve25519-dalek`, `hex`, `hex-literal`, `wasm-bindgen`, `x25519-dalek`.
+  No `getrandom`, no `rand_core`, confirming the Experiment 1 promise. The two
+  `getrandom` hits elsewhere in `Cargo.lock` belong to `webbuf_slhdsa`.
+
+**Risk outcomes (all six green):**
+
+- Risk #1 (clamping): the `clamping_is_internal` test passes — variants in
+  clamped bits produce identical public keys. Confirmed empirically.
+- Risk #2 (`was_contributory()` coverage): all seven canonical small-order
+  points trigger the contributory-check failure. **No need for an additional
+  explicit `as_bytes()` zero check** — `was_contributory()` is sufficient
+  against the Cremers & Jackson list.
+- Risk #3 (`getrandom` sneak-in): not present in the dep graph, verified via
+  lockfile.
+- Risk #4 (WASM binary size): smaller than `webbuf_p256`. Non-issue.
+- Risk #5 (TS-side error message stability): the
+  `non-contributory (small-order public key)` message is asserted in both Rust
+  and TS test layers. Locked in.
+- Risk #6 (`version.workspace = true`): unchanged behavior — picks up `0.15.1`
+  from the workspace; will bump in lockstep with the next release.
+
+**Public API delivered:**
+
+```typescript
+import { x25519PublicKeyCreate, x25519SharedSecretRaw } from "@webbuf/x25519";
+
+x25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32>;
+x25519SharedSecretRaw(
+  privKey: FixedBuf<32>,
+  pubKey: FixedBuf<32>,
+): FixedBuf<32>; // throws on non-contributory peer pub
+```
+
+The umbrella `webbuf` package re-exports both functions alongside the existing
+primitives.
+
+The next experiment will build `@webbuf/ed25519` end-to-end against the same
+Experiment 1 pinned-dependency baseline. The pipeline is now proven; that build
+will be largely mechanical, with the design surface concentrated on the Ed25519
+sign/verify API shape and the seed-vs-secret-key distinction.

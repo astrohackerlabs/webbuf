@@ -12,6 +12,7 @@ members = [
     "webbuf_secp256k1",
     "webbuf_sha256",
     "webbuf_slhdsa",
+    "webbuf_x25519",
 ]
 resolver = "2"
 
@@ -31,3 +32,4 @@ webbuf_ripemd160 = { path = "./webbuf_ripemd160" }
 webbuf_secp256k1 = { path = "./webbuf_secp256k1" }
 webbuf_sha256 = { path = "./webbuf_sha256" }
 webbuf_slhdsa = { path = "./webbuf_slhdsa" }
+webbuf_x25519 = { path = "./webbuf_x25519" }

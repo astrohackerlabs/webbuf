@@ -1,0 +1,30 @@
+[package]
+name = "webbuf_x25519"
+description = "X25519 ECDH (RFC 7748) for WebBuf with optional WASM support."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+x25519-dalek = { version = "=2.0.1", default-features = false, features = [
+    "static_secrets",
+    "zeroize",
+    "precomputed-tables",
+] }
+curve25519-dalek = { version = "=4.1.3", default-features = false, features = [
+    "zeroize",
+    "precomputed-tables",
+] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+hex-literal = "0.4.1"
+hex = "0.4.3"

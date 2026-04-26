@@ -7,6 +7,7 @@ export * from "@webbuf/sha256";
 export * from "@webbuf/ripemd160";
 export * from "@webbuf/secp256k1";
 export * from "@webbuf/p256";
+export * from "@webbuf/x25519";
 export * from "@webbuf/aescbc";
 export * from "@webbuf/aesgcm";
 export * from "@webbuf/aesgcm-mlkem";
