@@ -123,22 +123,35 @@ Mirror `@webbuf/p256` shape:
 
 - `x25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32>`
 - `x25519SharedSecretRaw(privKey: FixedBuf<32>, pubKey: FixedBuf<32>): FixedBuf<32>`
-  — RFC 7748 raw 32-byte scalar-mult output, no hashing.
-- Underlying Rust crate: RustCrypto `x25519-dalek` or `curve25519-dalek` (one of
-  these is a thin wrapper over the other; pick whichever `RustCrypto/x25519`
-  re-exports in `0.x` and pin exactly per the issue 0001/0005 PQC pinning
-  rationale extended to fresh dependencies).
+  — RFC 7748 raw 32-byte scalar-mult output, no hashing. **Rejects all-zero
+  shared secrets.** RFC 7748 §6.1 notes implementations may abort when the
+  scalar-mult output is all zero (caused by small-order / low-order public
+  inputs). WebBuf takes the conservative position: the primitive throws on
+  all-zero output, matching `x25519-dalek`'s `SharedSecret::was_contributory()`
+  check. This means every consumer (including the hybrid encryption package)
+  gets the protection by default — without it, a malicious peer's small-order
+  public key could collapse the hybrid scheme to PQ-only.
+- Underlying Rust crate: `x25519-dalek` (Dalek-cryptography, not RustCrypto; the
+  two ecosystems are distinct). `x25519-dalek` is a thin wrapper around
+  `curve25519-dalek`. Pin exactly per the issue 0001 / 0005 PQC pinning
+  rationale extended to fresh cryptographic dependencies. The exact version to
+  pin and feature flags to enable will be settled in the crate-survey
+  experiment.
 
 ### `@webbuf/ed25519` — classical primitive
 
 Mirror the secp256k1 / p256 ECDSA shape but with Ed25519's sign/verify
-semantics:
+semantics. **PureEdDSA (RFC 8032 §5.1.6 / §5.1.7) only** — no Ed25519ph prehash
+variant. The signer consumes the raw message bytes directly, preserving the
+collision-resilience guarantee RFC 8032 calls out for PureEdDSA. Consumers who
+want to sign a digest can hash externally and pass the digest as the "message" —
+but the primitive itself never prehashes.
 
 - `ed25519KeyPair(): { privKey, pubKey }` and a deterministic
   `ed25519KeyPairFromSeed(seed: FixedBuf<32>)`.
 - `ed25519Sign(privKey, message): FixedBuf<64>`.
 - `ed25519Verify(pubKey, message, signature): boolean`.
-- Underlying Rust: `ed25519-dalek`.
+- Underlying Rust: `ed25519-dalek` (Dalek-cryptography, not RustCrypto).
 
 ### `@webbuf/aesgcm-x25519dh-mlkem` — hybrid encryption
 
@@ -167,16 +180,21 @@ issue-0006 KAT pattern.
 The exact API surface and naming will be designed in an experiment, but the
 construction is fixed:
 
-- Signing: Ed25519 over `H(message)` and ML-DSA-65 over the same message,
-  concatenated with a length prefix.
+- Signing: **both signers consume the raw message bytes directly per their
+  RFC-defined interfaces.** Ed25519 runs PureEdDSA (RFC 8032 §5.1.6) over the
+  message; ML-DSA-65 runs FIPS 204's `Sign` over the same message bytes. No
+  external prehashing, no `H(message)` indirection — that would either collapse
+  to Ed25519ph (asymmetric pairing rejected by `draft-ietf-openpgp-pqc` for the
+  same reason) or break PureEdDSA's collision-resilience.
 - Verification: both signatures must verify; failure of either fails the whole.
 - Wire format: `version || ed25519_sig (64) || mldsa_sig (3309)` = 3373 + 1 =
   3374 bytes.
 
-The construction matches the OpenPGP composite signature "MUST" pairing
-(`draft-ietf-openpgp-pqc`) and the LAMPS `id-Ed25519-MLDSA65` OID. WebBuf's
-package will be Web-PKI-agnostic — no X.509, no ASN.1 — but the underlying
-sign/verify pair will be the same primitive composition.
+This matches the OpenPGP composite signature "MUST" pairing
+(`draft-ietf-openpgp-pqc` — both signers over raw message, no prehash) and the
+LAMPS `id-Ed25519-MLDSA65` OID. WebBuf's package will be Web-PKI-agnostic — no
+X.509, no ASN.1 — but the underlying sign/verify pair will be the same primitive
+composition.
 
 ## What's out of scope
 
@@ -239,6 +257,13 @@ sign/verify pair will be the same primitive composition.
 - Byte-precise KAT regression captured in this issue.
 - A KeyPears-style worked example (multi-field AAD construction; a composite
   signature over a federation message) where applicable.
+- **X25519 small-order / all-zero rejection.** For `@webbuf/x25519` and the
+  hybrid encryption package: feed the documented small-order Curve25519 public
+  points (the eight points listed in RFC 7748 §6.1 / Cryptographic Frontier and
+  `x25519-dalek`'s test vectors) and assert that `x25519SharedSecretRaw` throws
+  and that hybrid encryption / decryption refuses to proceed. Without this, a
+  malicious peer's small-order public key could collapse the hybrid scheme to
+  PQ-only.
 
 ## Decision log so far
 
@@ -250,10 +275,19 @@ sign/verify pair will be the same primitive composition.
   0004 `aesgcm-p256dh-mlkem` choice for cross-package consistency.
 - **Signature combiner:** OpenPGP-style composite (two independent signatures,
   both required). Concatenation order: Ed25519 first, ML-DSA second (mirrors the
-  encryption ordering: classical first, PQ second).
+  encryption ordering: classical first, PQ second). **Both signers consume the
+  raw message bytes per their RFC interfaces** — PureEdDSA for Ed25519 (RFC 8032
+  §5.1.6, no prehash), FIPS 204 `Sign` for ML-DSA-65 — matching
+  `draft-ietf-openpgp-pqc`. No `H(message)` indirection.
+- **X25519 small-order rejection:** `x25519SharedSecretRaw` throws on all-zero
+  scalar-mult output (RFC 7748 §6.1). Conservative position: the primitive
+  itself enforces, every consumer inherits the protection.
+- **Crate ecosystem:** Dalek-cryptography (`x25519-dalek`, `ed25519-dalek`,
+  built on `curve25519-dalek`), not RustCrypto. The two ecosystems are distinct;
+  audit posture, maintenance, and feature flags differ.
 - **Naming:** `aesgcm-x25519dh-mlkem` for the hybrid encryption package (mirrors
-  `aesgcm-p256dh-mlkem`). Composite signature naming is open pending Experiment
-  N design.
+  `aesgcm-p256dh-mlkem`). Composite signature naming is open pending the
+  experiment that designs it.
 - **Versioning:** new wire-format version byte for each new package (`0x03` for
   `aesgcm-x25519dh-mlkem`); independent HKDF info-string versioning.
 
@@ -268,16 +302,6 @@ After this issue closes:
 - The `@webbuf/aesgcm-p256dh-mlkem` / classical-NIST track stays maintained for
   consumers that need NIST-curves-everywhere.
 
-Experiments will be designed and recorded incrementally. Likely starting points:
-
-1. Survey the Rust Curve25519 crate ecosystem (`x25519-dalek`, `ed25519-dalek`,
-   `curve25519-dalek`) for version pinning and feature selection — the same kind
-   of survey issue 0001 did for the PQC crates.
-2. Build `@webbuf/x25519` end-to-end (Rust crate → WASM → TS wrapper + tests).
-3. Build `@webbuf/ed25519` end-to-end.
-4. Build `@webbuf/aesgcm-x25519dh-mlkem` end-to-end with KAT capture and AAD
-   plumbing.
-5. Design and build the composite Ed25519+ML-DSA signature package.
-
-But these are the natural starting points, not a committed sequence — later
-experiments will be designed only after earlier ones land.
+Experiments will be designed and recorded incrementally — one at a time, with
+each experiment's outcome shaping the next. No experiment sequence is committed
+upfront.
