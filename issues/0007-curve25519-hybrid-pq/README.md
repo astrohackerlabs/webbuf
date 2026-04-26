@@ -1,6 +1,7 @@
 +++
-status = "open"
+status = "closed"
 opened = "2026-04-26"
+closed = "2026-04-26"
 +++
 
 # Adopt Curve25519 (X25519, Ed25519) and Curve25519-based hybrid PQ constructions
@@ -2580,9 +2581,224 @@ Same pattern as Experiments 2, 3, 4:
 
 ### Implementation
 
-_(To be filled in when the experiment is run.)_
+Built `@webbuf/sig-ed25519-mldsa` end-to-end as a pure-TypeScript composition
+over `@webbuf/ed25519` (Experiment 3) and `@webbuf/mldsa` (issue 0001 / 0003).
+Files created:
 
-### Result
+- `ts/npm-webbuf-sig-ed25519-mldsa/` — `package.json`, `tsconfig.json`,
+  `tsconfig.build.json`, `src/index.ts`, `test/index.test.ts`,
+  `test/audit.test.ts`, `README.md`, `LICENSE`.
+- `ts/npm-webbuf/scripts/capture-issue-0007-sig-ed25519-mldsa-kats.ts` —
+  one-shot deterministic-KAT capture.
+- `ts/npm-webbuf/package.json` and `ts/npm-webbuf/src/index.ts` updated to add
+  the new package as a dependency and re-export it.
 
-_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
-green, with the captured KAT hashes and any notable observations recorded.)_
+Source uses `ed25519Sign` + `mlDsa65Sign` (hedged) for the default sign path,
+and `mlDsa65SignDeterministic` for the leading-underscore deterministic helper
+used in KAT capture. Verify path uses `ed25519Verify` (which calls
+`verify_strict` internally per the Experiment 3 Codex fix) AND `mlDsa65Verify`;
+both halves run regardless of either's individual result — no short-circuit.
+
+One typecheck adjustment during implementation: TypeScript widens
+`1 + 64 + 3309` arithmetic at the type level to `number` rather than inferring
+the literal `3374`, so the `FixedBuf.fromBuf<3374>` calls inside
+`sigEd25519MldsaSign` and `_sigEd25519MldsaSignDeterministic` use the literal
+`3374` directly rather than the `FIXED_SIZE` const. Tests that construct
+`FixedBuf<3374>` for tampering also use the literal. The
+`SIG_ED25519_MLDSA.fixedSize` constant is still exported for documentation
+purposes.
+
+### Captured KAT (issue 0007 Experiment 5)
+
+Deterministic inputs:
+
+- Ed25519 seed: `0xaa * 32`
+- ML-DSA-65 keypair seed: `0xbb * 32`
+- Message: `"composite signature"`
+
+Captured outputs:
+
+| Field                                      | Value                                                                                                                              |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Ed25519 public key                         | `e734ea6c2b6257de72355e472aa05a4c487e6b463c029ed306df2f01b5636b58`                                                                 |
+| ML-DSA-65 verifying key — SHA-256          | `985ef8763b1eb7f9b05d535735924b7d9fbf20ada3304c0bfdd78db8c9889eae`                                                                 |
+| Ed25519 signature half (bytes 1..65)       | `ec5a9be5a744a00ac6c2528eb00c005fae21fb476842b65f9eaf63984350948da2b14e65cd955c4ab944305fe0228d922aeba06722e2eb435ece3fc1da0d9f02` |
+| ML-DSA signature prefix 16B (bytes 65..81) | `7223bf2f5a2253ece0ed48c5c4f2bc11`                                                                                                 |
+| Composite signature length                 | 3374 bytes                                                                                                                         |
+| `SHA-256(signature)`                       | `401a517ca7568a7a3655a03b9fd42ad88431586cbc71a86f70fa51eb47158c53`                                                                 |
+
+Captured by running `tsx scripts/capture-issue-0007-sig-ed25519-mldsa-kats.ts`
+from `ts/npm-webbuf/` after `pnpm run build` of the new package. Asserted in
+`test/audit.test.ts`.
+
+### Result: Pass
+
+**Tests (19/19 in the new package, 3/3 in umbrella, 8/8 package-main):**
+
+- `pnpm test` in `ts/npm-webbuf-sig-ed25519-mldsa` — 19/19 pass: 14 unit tests
+  (round-trip on random / empty / 64 KiB messages, length and version-byte
+  invariants, four hybrid defense-in-depth tests including wrong-Ed25519-pub,
+  wrong-ML-DSA-pub, tampered-Ed25519-half, and tampered-ML-DSA-half,
+  version-byte tampering rejection across `0x00`, `0x02`, `0xff`,
+  tampered-message rejection, non-determinism of the default hedged sign with
+  byte-stable Ed25519 halves, and a small-order Ed25519 universal-forgery
+  rejection asserting the Experiment 3 strict-verify fix carries through to the
+  composite layer) plus 5 audit tests (Ed25519 public-key derivation, ML-DSA
+  verifying-key SHA-256 match, byte-precise composite-signature SHA-256 KAT,
+  wire-format prefix bytes, and end-to-end verification of the captured
+  signature).
+- `pnpm test` in the umbrella `ts/npm-webbuf` — 3/3 pass after the re-export was
+  added.
+- **Package-main reproduction:** ran a script importing through
+  `@webbuf/sig-ed25519-mldsa` after `pnpm run build`; all 8 checks pass: KAT
+  length 3374, version byte 0x01, KAT SHA-256 matches, KAT verifies, hedged
+  round-trip works, Ed25519-half tamper rejected, ML-DSA-half tamper rejected,
+  and the small-order universal-forgery rejected — confirming the
+  consumer-facing path matches the in-package vitest tests.
+
+**Builds:**
+
+- `pnpm install`, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` all
+  clean in `ts/npm-webbuf-sig-ed25519-mldsa`.
+- `pnpm run typecheck` and `pnpm run build:typescript` clean in the umbrella
+  `ts/npm-webbuf` after the re-export was added.
+
+**Risk outcomes (all six green):**
+
+- Risk #1 (seed vs. signing-key shape mismatch): static `FixedBuf` size
+  discriminators (32, 1952, 4032 — all distinct) prevent cross-wiring at
+  typecheck time. No shape confusion possible.
+- Risk #2 (hedged-vs-deterministic ML-DSA): production path uses `mlDsa65Sign`
+  (hedged); deterministic helper is the `_sigEd25519MldsaSignDeterministic`
+  underscore-prefixed test-only function, used only by the audit test and the
+  capture script.
+- Risk #3 (ML-DSA `context` parameter not exposed): per the Decision Log,
+  composite wrapper is narrow — no context binding. Documented in the README's
+  API section. Consumers who need it call `mlDsa65Sign` directly.
+- Risk #4 (verification timing): both halves run unconditionally; no
+  short-circuit. Constant-time properties inherited from the underlying
+  primitives, which is the same level of guarantee any consumer would get
+  otherwise. Documented as a trade-off.
+- Risk #5 (capture-script convention): script lives at
+  `ts/npm-webbuf/scripts/capture-issue-0007-sig-ed25519-mldsa-kats.ts`, imports
+  from the just-built dist, follows the issue 0004 / 0006 / Experiment 4
+  pattern.
+- Risk #6 (dist staleness): caught by the success-criteria package-main
+  reproduction; all 8 checks pass through the dist path.
+
+**Public API delivered:**
+
+```typescript
+import {
+  sigEd25519MldsaSign,
+  sigEd25519MldsaVerify,
+  SIG_ED25519_MLDSA,
+} from "@webbuf/sig-ed25519-mldsa";
+
+sigEd25519MldsaSign(
+  ed25519Priv: FixedBuf<32>,
+  mldsaSigningKey: FixedBuf<4032>,
+  message: WebBuf,
+): FixedBuf<3374>;
+
+sigEd25519MldsaVerify(
+  ed25519Pub: FixedBuf<32>,
+  mldsaVerifyingKey: FixedBuf<1952>,
+  message: WebBuf,
+  signature: FixedBuf<3374>,
+): boolean;
+```
+
+The umbrella `webbuf` package re-exports both functions plus the
+`SIG_ED25519_MLDSA` constants object alongside all the existing primitives and
+hybrid packages.
+
+This is the final experiment of issue 0007. The composite Ed25519 + ML-DSA-65
+signature scheme completes the Curve25519-first post-quantum suite, paired with
+`@webbuf/aesgcm-x25519dh-mlkem` for hybrid encryption. KeyPears can now ship the
+entire post-quantum migration on the Curve25519-first standards track. Issue
+0007 can be closed.
+
+## Conclusion
+
+Issue 0007 added Curve25519 (X25519 + Ed25519) as classical primitives to WebBuf
+and built the matching hybrid post-quantum constructions, giving WebBuf a
+complete Curve25519-first answer for both encryption and signatures.
+
+**Five experiments, all Pass:**
+
+1. **Dalek-cryptography crate survey.** Pinned `x25519-dalek = "=2.0.1"`,
+   `ed25519-dalek = "=2.2.0"`, `curve25519-dalek = "=4.1.3"`. Critical findings:
+   `curve25519-dalek 4.2.0` is yanked (so direct pinning defends against future
+   yank shifts); `ed25519-dalek`'s default `std` feature must be off for WASM;
+   both crates compile to `wasm32-unknown-unknown` with no `getrandom` in the
+   dep graph under the chosen feature set; the 2019 audit was Quarkslab (not
+   Trail of Bits as I had originally written); RUSTSEC-2024-0344
+   (curve25519-dalek timing leak) and RUSTSEC-2022-0093 (ed25519-dalek
+   keypair-oracle) are both fixed by the pinned versions.
+2. **`@webbuf/x25519`.** Rust crate + WASM + TS wrapper + tests + README. X25519
+   ECDH per RFC 7748. WASM 67 KiB (smaller than `webbuf_p256`).
+   `x25519SharedSecretRaw` rejects non-contributory shared secrets (small-order
+   public keys), the seven canonical points from Cremers & Jackson 2019. RFC
+   7748 §5.2 + §6.1 audit KATs. Internal clamping per RFC 7748 §5.
+3. **`@webbuf/ed25519`.** Same pipeline. Ed25519 PureEdDSA per RFC 8032. WASM
+   117 KiB (after the `verify_strict` post-merge fix, +1.7 KiB from the original
+   `verify`). All four canonical RFC 8032 §7.1 audit KATs (TEST 1, 2, 3,
+   SHA(abc)) byte-for-byte. **Codex caught a high-severity bug**: the wrapper
+   was using non-strict `verify`, admitting a small-order universal-forgery
+   attack — fixed by switching to `verify_strict`, with a regression test
+   covering the identity-element-pub-key + identity-R/zero-S forgery.
+4. **`@webbuf/aesgcm-x25519dh-mlkem`.** Pure-TS hybrid encryption sibling of
+   `@webbuf/aesgcm-p256dh-mlkem`. AES-256-GCM keyed by HKDF-SHA-256 over
+   `(X25519 SS || ML-KEM-768 SS)`. Wire format identical to the P-256 sibling
+   but with version byte `0x03`. AAD support inherited from `@webbuf/aesgcm`.
+   Small-order rejection propagates from the X25519 primitive through the hybrid
+   layer's encrypt and decrypt paths. Two byte-precise KATs captured (empty AAD:
+   `81ebae8d…d9c986e1`; non-empty AAD: `20ec384a…cea0b9c9`).
+5. **`@webbuf/sig-ed25519-mldsa`.** Pure-TS composite signature scheme. Two
+   independent signatures over the raw message bytes (PureEdDSA + FIPS 204
+   ML-DSA-65 Sign), both required to verify. Wire format
+   `0x01 || ed25519_sig (64) || mldsa_sig (3309)` = 3374 bytes.
+   Hedged-by-default for production (deterministic helper for KATs only).
+   Deterministic KAT captured: `SHA-256(signature) = 401a517c…47158c53`. Strict
+   Ed25519 verification inherited; the small-order universal-forgery rejection
+   tested empirically through the composite layer.
+
+**Codex review highlights** (caught and fixed during the issue):
+
+- "Composite signature input is underspecified" — locked in PureEdDSA +
+  raw-message ML-DSA, no prehash, before any code was written.
+- "X25519 small-order rejection missing" — made primitive-level enforcement a
+  constraint; tested with all seven Cremers & Jackson u-coordinates.
+- "Crate ownership: Dalek, not RustCrypto" — corrected throughout the issue.
+- "Premature experiments list" — deleted; experiments designed and recorded one
+  at a time.
+- "ed25519Verify must use verify_strict" — high-severity universal forgery;
+  fixed in Experiment 3 with regression tests in both Rust and TypeScript.
+- "Stale dist artifact" — surfaced the dist-staleness category; Experiments 4
+  and 5 added package-main reproductions to their success criteria.
+
+**Public API summary across the issue:**
+
+| Package                         | Purpose                     | Key surface                                                                   |
+| ------------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `@webbuf/x25519`                | Classical ECDH              | `x25519PublicKeyCreate`, `x25519SharedSecretRaw` (rejects small-order)        |
+| `@webbuf/ed25519`               | Classical signatures        | `ed25519PublicKeyCreate`, `ed25519Sign` (PureEdDSA), `ed25519Verify` (strict) |
+| `@webbuf/aesgcm-x25519dh-mlkem` | Hybrid encryption           | `aesgcmX25519dhMlkemEncrypt/Decrypt` with optional AAD                        |
+| `@webbuf/sig-ed25519-mldsa`     | Hybrid composite signatures | `sigEd25519MldsaSign` (hedged), `sigEd25519MldsaVerify`                       |
+
+Combined with the existing `@webbuf/mlkem` (issue 0001) and `@webbuf/mldsa`
+(issues 0001 / 0003), WebBuf's post-quantum suite now covers:
+
+- Pure-PQ encryption: `@webbuf/aesgcm-mlkem` (issue 0004).
+- NIST-curves hybrid encryption: `@webbuf/aesgcm-p256dh-mlkem` (issue 0004) —
+  secondary, kept for compliance.
+- **Curve25519-first hybrid encryption: `@webbuf/aesgcm-x25519dh-mlkem` (this
+  issue) — recommended.**
+- Pure-PQ signatures: `@webbuf/mldsa`, `@webbuf/slhdsa` (issues 0001 / 0003).
+- **Curve25519-first hybrid signatures: `@webbuf/sig-ed25519-mldsa` (this issue)
+  — recommended.**
+
+KeyPears (the named first consumer driving this work) is now unblocked to ship
+the entire post-quantum messaging migration on the Curve25519-first standards
+track, with no future throwaway curve migration required.

@@ -64,6 +64,7 @@
     "@webbuf/pbkdf2-sha256": "workspace:^",
     "@webbuf/secp256k1": "workspace:^",
     "@webbuf/sha256": "workspace:^",
+    "@webbuf/sig-ed25519-mldsa": "workspace:^",
     "@webbuf/slhdsa": "workspace:^",
     "@webbuf/webbuf": "workspace:^",
     "@webbuf/x25519": "workspace:^"
