@@ -262,12 +262,15 @@ composition.
 - A KeyPears-style worked example (multi-field AAD construction; a composite
   signature over a federation message) where applicable.
 - **X25519 small-order / all-zero rejection.** For `@webbuf/x25519` and the
-  hybrid encryption package: feed the documented small-order Curve25519 public
-  points (the eight points listed in RFC 7748 §6.1 / Cryptographic Frontier and
-  `x25519-dalek`'s test vectors) and assert that `x25519SharedSecretRaw` throws
-  and that hybrid encryption / decryption refuses to proceed. Without this, a
-  malicious peer's small-order public key could collapse the hybrid scheme to
-  PQ-only.
+  hybrid encryption package: feed the seven small-order Curve25519 u-coordinates
+  (from Cremers & Jackson, "Prime, Order Please!" 2019, and Adam Langley's
+  curves-list notes — **not** RFC 7748, which does not enumerate them, and
+  **not** `x25519-dalek`'s upstream tests, which do not cover them either).
+  Assert that `x25519SharedSecretRaw` throws and that hybrid encryption /
+  decryption refuses to proceed. Without this, a malicious peer's small-order
+  public key could collapse the hybrid scheme to PQ-only. WebBuf will hard-code
+  the seven u-coordinates in `mod tests`; see Experiment 1's Result section A8
+  for the source citations.
 
 ## Decision log so far
 
