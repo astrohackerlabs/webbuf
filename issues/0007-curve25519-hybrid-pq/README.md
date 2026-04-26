@@ -1642,10 +1642,122 @@ Same pattern as Experiment 2:
 
 ### Implementation
 
-_(To be filled in when the experiment is run.)_
+Built `@webbuf/ed25519` end-to-end against the Experiment 1 pinned-dependency
+baseline using the build pipeline proven by Experiment 2. Files created:
 
-### Result
+- `rs/webbuf_ed25519/Cargo.toml` — exact pins per Experiment 1
+  (`ed25519-dalek = "=2.2.0"`, `curve25519-dalek = "=4.1.3"`,
+  `default-features = false`, feature flags `fast`, `zeroize` for the signer;
+  `zeroize`, `precomputed-tables` for curve25519-dalek). Critically, `std` is
+  NOT enabled — the default-on `std` feature would pull in `sha2/std` and break
+  the WASM build.
+- `rs/webbuf_ed25519/src/lib.rs` — three `wasm_bindgen` exports
+  (`ed25519_public_key_create`, `ed25519_sign`, `ed25519_verify`) plus twelve
+  `mod tests` cases.
+- `rs/webbuf_ed25519/wasm-pack-bundler.zsh` — same defensive `rm -f` cleanup
+  pattern as `webbuf_x25519`.
+- `rs/webbuf_ed25519/LICENSE` (MIT).
+- `rs/Cargo.toml` workspace `members` and `[patch.crates-io]` updated.
+- `ts/npm-webbuf-ed25519/` — `package.json`, `tsconfig.json`,
+  `tsconfig.build.json`, `build-inline-wasm.ts`, `src/index.ts`,
+  `test/index.test.ts`, `test/audit.test.ts`, `README.md`, `LICENSE`, and the
+  bundler / inline-base64 directories populated by the build pipeline.
+- `ts/npm-webbuf/package.json` and `ts/npm-webbuf/src/index.ts` updated to
+  re-export the new package.
 
-_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
-green, with notable observations — RFC 8032 KAT outcomes, WASM size, any
-feature-flag adjustments — recorded.)_
+#### RFC 8032 §7.1 vectors
+
+The four canonical KATs (TEST 1 empty-message, TEST 2 1-byte, TEST 3 2-byte,
+TEST SHA(abc)) were verified against three independent sources (rfc-editor.org
+plain-text RFC, ed25519.cr.yp.to/python/sign.input reference,
+datatracker.ietf.org HTML rendering) before being embedded in the test suites.
+TEST 1024 (the 1023-byte message variant) was dropped — it would bloat the
+source files for no incremental safety, and the four short vectors plus the
+negative-path tests cover the algorithm behavior comprehensively.
+
+### Result: Pass
+
+**Tests (12/12 Rust, 24/24 TypeScript):**
+
+- `cargo test -p webbuf_ed25519 --release` — 12/12 pass: four RFC 8032 §7.1 KATs
+  (TEST 1 empty, TEST 2 0x72, TEST 3 0xaf 0x82, TEST SHA(abc)), determinism,
+  hard-coded round-trip, tampered-message rejection, tampered-signature
+  rejection (R and S separately), wrong-public-key rejection,
+  malformed-public-key graceful rejection (`Ok(false)`), all-zero-signature
+  rejection, input-length errors with stable messages.
+- `pnpm test` in `ts/npm-webbuf-ed25519` — 24/24 pass: 12 audit (each RFC 8032
+  §7.1 KAT asserts public-key derivation, signature production, and verification
+  — three `it()` blocks per vector × 4 vectors) + 12 unit (round-trip with
+  random keys, length invariants, deterministic public-key
+  - signature derivation, empty-message round-trip, 64 KiB message round-trip,
+    all six rejection paths).
+
+**Builds:**
+
+- `cargo build -p webbuf_ed25519` clean.
+- `./wasm-pack-bundler.zsh` clean.
+- `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` clean in
+  `ts/npm-webbuf-ed25519`.
+- `pnpm run typecheck`, `pnpm run build:typescript`, and `pnpm test` clean in
+  the umbrella `ts/npm-webbuf` after the re-export was added.
+
+**WASM size:**
+
+- `webbuf_ed25519_bg.wasm`: **118,001 bytes (~115 KiB)**.
+- For comparison: `webbuf_x25519` is 67 KiB (no SHA-512); `webbuf_p256` is 78
+  KiB; `webbuf_secp256k1` is 99 KiB. Ed25519's larger size is the SHA-512
+  prefix-hash machinery — expected, within the 100–150 KB Experiment-3 estimate,
+  and still well below all WebBuf PQ packages.
+- Decision: ship as-is. Experiment 1's `precomputed-tables` defer is closed for
+  both Curve25519-family packages.
+
+**`getrandom` not in the dep graph:**
+
+- `awk '/name = "webbuf_ed25519"/,/^$/' rs/Cargo.lock` shows direct deps only:
+  `curve25519-dalek`, `ed25519-dalek`, `hex`, `hex-literal`, `wasm-bindgen`. No
+  `getrandom`, no `rand_core` — confirming the Experiment 1 promise extends to
+  ed25519-dalek under the chosen feature set.
+
+**Risk outcomes (all six green):**
+
+- Risk #1 (seed vs. expanded confusion): seed-only API enforced; the README
+  documents the convention; `ed25519-dalek 2.x`'s `SigningKey::from_bytes`
+  round-trips through `to_bytes` returning the seed (not the expanded form), so
+  there's no asymmetric serialization trap.
+- Risk #2 (determinism): PureEdDSA determinism confirmed by the
+  `signing_is_deterministic` Rust test and the matching TypeScript test — same
+  `(privKey, message)` produces byte-identical signatures every call.
+- Risk #3 (`VerifyingKey::from_bytes` failure handling): the Rust wrapper turns
+  malformed point bytes into `Ok(false)` rather than `Err`; explicit test
+  `verify_rejects_malformed_public_key_gracefully` (Rust) and the matching
+  TypeScript test confirm this is value-not-exception.
+- Risk #4 (WASM size): 115 KiB, within estimate. Acceptable.
+- Risk #5 (`Signature::from_bytes` infallibility): handled correctly by routing
+  rejection through `verify()` rather than parse-time; tampered-signature tests
+  pass.
+- Risk #6 (test-vector formatting): used the verified-three-source hex before
+  any `cargo test` invocation; all four KATs passed on the first run, confirming
+  both the vectors AND the implementation are byte-exact against RFC 8032.
+
+**Public API delivered:**
+
+```typescript
+import {
+  ed25519PublicKeyCreate,
+  ed25519Sign,
+  ed25519Verify,
+} from "@webbuf/ed25519";
+
+ed25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32>;
+ed25519Sign(privKey: FixedBuf<32>, message: WebBuf): FixedBuf<64>;
+ed25519Verify(
+  pubKey: FixedBuf<32>,
+  message: WebBuf,
+  signature: FixedBuf<64>,
+): boolean;
+```
+
+The umbrella `webbuf` package re-exports all three functions alongside the
+existing primitives. The Curve25519 family (X25519 + Ed25519) is now complete in
+WebBuf and ready to be paired with `@webbuf/mlkem` and `@webbuf/mldsa` in the
+hybrid packages — the next experiments in this issue.

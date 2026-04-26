@@ -52,6 +52,7 @@
     "@webbuf/aesgcm-p256dh": "workspace:^",
     "@webbuf/aesgcm-p256dh-mlkem": "workspace:^",
     "@webbuf/blake3": "workspace:^",
+    "@webbuf/ed25519": "workspace:^",
     "@webbuf/fixedbuf": "workspace:^",
     "@webbuf/mlkem": "workspace:^",
     "@webbuf/mldsa": "workspace:^",
