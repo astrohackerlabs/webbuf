@@ -233,10 +233,14 @@ composition.
 - **Capture byte-precise KATs for every new construction.** Same pattern as
   issue 0004 (raw KAT bytes embedded in the issue + asserted in
   `test/audit.test.ts`).
-- **Audit posture.** Both `x25519-dalek` and `ed25519-dalek` have had public
-  review (notably the 2017 SLOTH and 2019 fault-injection work) unlike the PQC
-  crates. The hybrid construction inherits its PQ-side audit posture from
-  `ml-kem` / `ml-dsa`. Document this in the package READMEs.
+- **Audit posture.** `curve25519-dalek` (and `subtle`) had a 2019 Quarkslab
+  audit covering the pre-1.0 codebase commissioned by Tari Labs. The 2.x line of
+  `x25519-dalek` and `ed25519-dalek` is not under that audit. Both crates have a
+  RUSTSEC history that must be reflected in the package READMEs:
+  `RUSTSEC-2022-0093` (ed25519-dalek keypair-oracle, fixed in 2.0.0) and
+  `RUSTSEC-2024-0344` (curve25519-dalek scalar-sub timing leak, fixed in 4.1.3).
+  The hybrid construction inherits its PQ-side audit posture from `ml-kem` /
+  `ml-dsa`. Document this in the package READMEs.
 - **No Web PKI surface.** The composite signature package signs and verifies raw
   bytes. No ASN.1, no X.509, no CMS. Consumers that need Web PKI compatibility
   build it on top.
@@ -419,9 +423,10 @@ For each, record the chosen flag list and the rationale.
 
 #### Q5: Audit and CVE history
 
-- Pull the public audit history. The 2019 Trail of Bits audit covered v1.0 of
-  the dalek crates; subsequent v2.x changes are not under that audit. Note this
-  for the `@webbuf/x25519` and `@webbuf/ed25519` README audit-posture sections.
+- Pull the public audit history. The 2019 Quarkslab audit (commissioned by Tari
+  Labs) covered the pre-1.0 `curve25519-dalek` and `subtle` crates; subsequent
+  4.x / 2.x changes are not under that audit. Note this for the `@webbuf/x25519`
+  and `@webbuf/ed25519` README audit-posture sections.
 - Search RUSTSEC for `x25519-dalek`, `ed25519-dalek`, and `curve25519-dalek`
   advisories. Document any historical CVEs and their fix versions.
 - Compare the audit posture to the WebBuf-PQC crates: the Dalek line is
@@ -466,10 +471,11 @@ For each, record the chosen flag list and the rationale.
    `ed25519-dalek` transitively pull in needs to match what WebBuf's existing
    WASM pipeline uses. Cross-check against `Cargo.lock` for the existing PQ
    packages.
-3. **Audit-posture wording temptation.** The dalek crates' 2019 v1.0 audit might
-   tempt us to write a stronger audit claim than is accurate for the current 2.x
-   line. Resolve by stating the verifiable fact ("v1.0 audited by Trail of Bits
-   in 2019; 2.x not under that audit") rather than the warmer-sounding
+3. **Audit-posture wording temptation.** The dalek crates' 2019 Quarkslab audit
+   (commissioned by Tari Labs, scope: pre-1.0 `curve25519-dalek` + `subtle`)
+   might tempt us to write a stronger audit claim than is accurate for the
+   current 4.x / 2.x line. Resolve by stating the verifiable fact (auditor +
+   year + scope + what's not under the audit) rather than the warmer-sounding
    paraphrase.
 4. **Decision creep into Experiment 2.** It's tempting to also pre-decide
    build-pipeline details (the exact `wasm-pack-bundler.zsh` contents, the TS
@@ -513,20 +519,269 @@ the **Result** section rather than guessing.
 
 ### Implementation
 
-_(To be filled in when the experiment is run. The implementation is a research
-pass — read crate docs, Cargo manifests, RUSTSEC advisories, existing WebBuf
-packages — and record the decisions per question below.)_
+Research pass executed by reading crate manifests on crates.io, the `docs.rs`
+API surfaces, the `dalek-cryptography` GitHub monorepo, the RUSTSEC advisory
+database, the Quarkslab 2019 audit blog post and report PDF, and the existing
+WebBuf parallels (`rs/webbuf_p256`, `rs/webbuf_secp256k1`, `rs/webbuf_mlkem`).
+One decision per question recorded below.
 
-### Result
+#### A1: `@webbuf/x25519` depends only on `x25519-dalek`
 
-_(To be filled in. Expected shape:_
+`x25519-dalek` exposes the full surface WebBuf needs: `PublicKey`,
+`StaticSecret`, `EphemeralSecret`, `SharedSecret::was_contributory()`. Reaching
+directly into `curve25519-dalek` would buy nothing for an X25519 ECDH wrapper.
+**`curve25519-dalek` is pulled in transitively and pinned in `Cargo.toml` to
+defend against yanks.**
+
+- Latest stable: **`x25519-dalek = "=2.0.1"`** (published 2024-02-07).
+- The `3.0.0-pre.N` line is pre-release only; not eligible for pinning.
+- Dependency graph at this version: `curve25519-dalek ^4` → `=4.1.3` after the
+  WebBuf yank-defense pin (see A3).
+
+#### A2: `@webbuf/ed25519` depends only on `ed25519-dalek`
+
+The RustCrypto `ed25519` trait crate is interesting for downstream trait-driven
+consumers, but adds a dependency for no benefit if WebBuf doesn't expose the
+trait surface. WebBuf's API is concrete `FixedBuf<32>` / `FixedBuf<64>` bytes in
+/ out, so the trait crate is unnecessary.
+
+- Latest stable: **`ed25519-dalek = "=2.2.0"`** (published 2025-07-09).
+- API confirmed: `SigningKey: Signer<Signature>` and
+  `VerifyingKey: Verifier<Signature>` give PureEdDSA
+  `sign(msg: &[u8]) -> Signature` and `verify(msg: &[u8], sig: &Signature)` per
+  RFC 8032 §5.1.6, no prehash. Ed25519ph is segregated behind `DigestSigner` /
+  `DigestVerifier` and is not used.
+
+#### A3: `curve25519-dalek` is pinned in WebBuf's `Cargo.toml`
+
+Both `x25519-dalek` and `ed25519-dalek` declare `curve25519-dalek = "^4"`
+internally. Cargo will resolve to the highest non-yanked 4.x.
+
+- Latest stable: **`curve25519-dalek = "=4.1.3"`** (published 2024-06-18).
+- **`curve25519-dalek 4.2.0` is YANKED** (published 2025-07-09, since yanked).
+  Without an exact pin, a future yank or a clean lock could shift the version
+  unexpectedly. Pin to defend against this.
+- 4.1.3 also includes the **RUSTSEC-2024-0344 timing-leak fix** (`Scalar29::sub`
+  / `Scalar52::sub` LLVM-inserted branch). Earlier 4.x is vulnerable.
+
+#### A4: Feature flags
+
+**`x25519-dalek 2.0.1` defaults are
+`["alloc", "precomputed-tables", "zeroize"]`.** `static_secrets` is **NOT** in
+the default set in 2.x — it must be explicitly enabled to get the `StaticSecret`
+constructor WebBuf needs (the user supplies the 32 raw private-key bytes; we
+don't generate them inside Rust). `getrandom` is gated behind a feature of the
+same name and is **off by default** — exactly what we want.
 
 ```toml
-# Pinned dependencies for @webbuf/x25519 and @webbuf/ed25519
-x25519-dalek    = { version = "= X.Y.Z", default-features = false, features = ["..."] }
-ed25519-dalek   = { version = "= A.B.C", default-features = false, features = ["..."] }
-# Plus transitively-pinned curve25519-dalek if not implied.
+x25519-dalek = { version = "=2.0.1", default-features = false, features = [
+    "static_secrets",        # required for `StaticSecret::from([u8; 32])`
+    "zeroize",               # private-key memory zeroized on drop
+    "precomputed-tables",    # base-point precomputation (faster ECDH; binary
+                             # size impact deferred to Experiment 2 measurement)
+] }
 ```
 
-_followed by audit-posture text and any gotchas. Mark **Result: Pass** once
-recorded.)_
+Disabled: `alloc` (not needed for raw-byte API), `serde`, `reusable_secrets`
+(footgun by design), `getrandom` (we pass bytes from JS), `pem`, `pkcs8`.
+
+**`ed25519-dalek 2.2.0` defaults are `["fast", "std", "zeroize"]`** — crucially
+**`std` is in the default set**. `std` pulls `sha2/std` which breaks the
+`no_std`-friendly WASM build. **Must use `default-features = false`** and re-add
+the wanted features explicitly.
+
+```toml
+ed25519-dalek = { version = "=2.2.0", default-features = false, features = [
+    "fast",                  # = curve25519-dalek/precomputed-tables
+    "zeroize",               # private-key memory zeroized on drop
+] }
+```
+
+Disabled: `std` (would break WASM), `alloc` (not needed for raw-byte API),
+`rand_core` (we pass seed bytes from JS), `digest` (Ed25519ph prehash variant —
+explicitly out per the issue's PureEdDSA-only constraint), `serde`, `pem`,
+`pkcs8`, `legacy_compatibility` (pre-RFC 8032 verification semantics — KeyPears
+doesn't need it), `hazmat`, `batch`, `asm`.
+
+#### A5: WASM target compatibility
+
+Both crates compile cleanly to `wasm32-unknown-unknown` with the feature sets
+above. Critically:
+
+- **No `getrandom` in the dep graph** when the RNG features are disabled.
+  `x25519-dalek 2.0.1` makes `getrandom` strictly opt-in via the `getrandom`
+  feature; `ed25519-dalek 2.2.0` makes `rand_core` optional behind a feature of
+  the same name. With both off, neither `getrandom 0.2.x` nor `0.3.x` is pulled,
+  and the historical `js` / `wasm_js` feature dance is sidestepped entirely.
+- The `cpufeatures` dep that `curve25519-dalek` pulls is gated to
+  `target_arch = "x86_64"` and is irrelevant on `wasm32`.
+- `wasm-pack --target bundler` works the same as for `webbuf_blake3`,
+  `webbuf_sha256`, `webbuf_mlkem`. Existing WebBuf bundler scripts
+  (`rs/webbuf_*/wasm-pack-bundler.zsh`) can be copy-modified for the new crates
+  without changes.
+
+WebBuf's existing `Cargo.lock` already pins `getrandom = "0.2.16"` for the
+SLH-DSA path (which uses `rand_core 0.10.1`); the new x25519/ed25519 crates
+won't perturb this because they don't pull `getrandom` at all under the chosen
+feature set.
+
+#### A6: Audit history and RUSTSEC advisories
+
+- **2019 audit was Quarkslab, not Trail of Bits.** Commissioned by Tari Labs
+  (~30 person-days, ~4 weeks, two engineers). Scope: `subtle` and pre-1.0
+  `curve25519-dalek` (Rust nightly-2019-06-11). Outcome: minor findings only;
+  the most-cited is that `Scalar::from_bits` allows non-canonical `Scalar52`
+  construction. Sources: the Quarkslab blog post
+  `https://blog.quarkslab.com/security-audit-of-dalek-libraries.html` and the
+  report PDF
+  `https://blog.quarkslab.com/resources/2019-08-26-audit-dalek-libraries/19-06-594-REP.pdf`.
+- The 4.x line of `curve25519-dalek` and the 2.x lines of `x25519-dalek` /
+  `ed25519-dalek` are **not under** the Quarkslab audit.
+
+RUSTSEC advisories to surface in the package READMEs:
+
+- **`RUSTSEC-2022-0093` (CVE-2022-50237)** — `ed25519-dalek` "Double Public Key
+  Signing Function Oracle Attack." Affected `< 2.0.0`; fixed in `2.0.0` by the
+  `SigningKey` / `VerifyingKey` API redesign. Our pinned `=2.2.0` is safe.
+- **`RUSTSEC-2024-0344` (CVE-2024-58262)** — `curve25519-dalek` timing
+  variability in `Scalar29::sub` / `Scalar52::sub` (LLVM `jns` insertion).
+  Affected `< 4.1.3`; fixed in `4.1.3` via volatile-read optimization barrier.
+  Our pinned `=4.1.3` is safe.
+- **`x25519-dalek`** — no direct advisories on rustsec.org. Inherits the
+  curve25519-dalek timing fix transitively.
+
+Audit-posture wording for the package READMEs (verifiable fact formulation, not
+paraphrase):
+
+> The `curve25519-dalek` (and `subtle`) crates received a security audit by
+> Quarkslab in 2019 (commissioned by Tari Labs). That audit covered the pre-1.0
+> codebase. The current `curve25519-dalek 4.x`, `x25519-dalek 2.x`, and
+> `ed25519-dalek 2.x` lines are not under the 2019 audit, but the 4.1.3 / 2.0.0
+> versions include fixes for two RUSTSEC advisories: RUSTSEC-2022-0093
+> (ed25519-dalek keypair-oracle, fixed in 2.0.0) and RUSTSEC-2024-0344
+> (curve25519-dalek scalar-sub timing leak, fixed in 4.1.3). WebBuf pins to
+> versions that include both fixes.
+
+This is softer than the WebBuf-PQC packages' "no public audit at all" wording,
+but more precise than "the dalek crates have been audited" — which would
+over-claim coverage of the modern API surface.
+
+#### A7: WebBuf parallels for Experiment 2
+
+Patterns to copy in the implementation experiments:
+
+- **`rs/webbuf_p256/Cargo.toml`** — clean elliptic-curve wrapper using
+  `default-features = false, features = ["arithmetic"]` on the underlying
+  RustCrypto crate, plus `[features] wasm = ["wasm-bindgen"]` feature gating on
+  the WebBuf side.
+- **`rs/webbuf_secp256k1/Cargo.toml`** — same shape with `k256`. Both these
+  wrappers use `[lib] crate-type = ["cdylib", "rlib"]` which is the WebBuf
+  convention.
+- **`rs/webbuf_mlkem/Cargo.toml`** — exact-pin precedent for a cryptographic dep
+  (`ml-kem = "=0.2.3"`).
+- **`rs/webbuf_p256/wasm-pack-bundler.zsh`** — bundler script with `rm` cleanup;
+  `rs/webbuf_mlkem/wasm-pack-bundler.zsh` uses the defensive `rm -f` form, which
+  is the better pattern for new packages.
+- **`#[cfg_attr(feature = "wasm", wasm_bindgen)]`** — the conditional WASM
+  export pattern documented in CLAUDE.md and used uniformly across existing
+  wrappers.
+
+No conventions diverge from these — Experiment 2 will mechanically mirror them.
+
+#### A8: Test-vector sources for Experiment 2+
+
+- **X25519 (RFC 7748):** §5.2 single-iteration IUT vectors and the 1 / 1,000 /
+  1,000,000-iteration ladder tests; §6.1 worked Alice/Bob example with the
+  expected 32-byte shared secret. Both are short enough to hard-code in the
+  eventual Rust `mod tests`.
+- **Ed25519 (RFC 8032):** §7.1 PureEdDSA TEST 1–4 + the 1023-byte test + the
+  SHA-512-of-`"abc"` test. The dalek upstream uses Adam Langley's `agl/ed25519`
+  `sign.input` superset, which does not trivially align with §7.1 — WebBuf will
+  hard-code the §7.1 vectors directly to assert literal RFC conformance.
+- **Small-order point list (X25519 all-zero rejection):** **NOT in RFC 7748
+  itself.** The canonical reference list of 7 small-order Curve25519
+  u-coordinates is in Cremers & Jackson, "Prime, Order Please!" (2019), and in
+  Adam Langley's notes
+  (`https://moderncrypto.org/mail-archive/curves/2017/000898.html`).
+  `x25519-dalek`'s upstream test suite does **not** enumerate them; WebBuf must
+  hard-code them and assert that `x25519SharedSecretRaw` rejects each.
+
+These pointers feed Experiment 2+ directly; capturing the actual vectors here
+would duplicate them.
+
+### Result: Pass
+
+Concrete pinned dependencies for the X25519 and Ed25519 primitive packages,
+ready for Experiment 2 to consume:
+
+```toml
+# rs/webbuf_x25519/Cargo.toml
+[dependencies]
+x25519-dalek = { version = "=2.0.1", default-features = false, features = [
+    "static_secrets",
+    "zeroize",
+    "precomputed-tables",
+] }
+curve25519-dalek = { version = "=4.1.3", default-features = false, features = [
+    "zeroize",
+    "precomputed-tables",
+] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+wasm = ["wasm-bindgen"]
+```
+
+```toml
+# rs/webbuf_ed25519/Cargo.toml
+[dependencies]
+ed25519-dalek = { version = "=2.2.0", default-features = false, features = [
+    "fast",
+    "zeroize",
+] }
+curve25519-dalek = { version = "=4.1.3", default-features = false, features = [
+    "zeroize",
+    "precomputed-tables",
+] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[features]
+wasm = ["wasm-bindgen"]
+```
+
+**Decision summary:**
+
+- Crate ecosystem: **dalek-cryptography** (`x25519-dalek`, `ed25519-dalek`, both
+  built on `curve25519-dalek`). Confirmed distinct from RustCrypto; Codex's
+  correction on the original issue wording is reflected in the Background's
+  Decision Log.
+- Pinned versions: `x25519-dalek = "=2.0.1"`, `ed25519-dalek = "=2.2.0"`,
+  `curve25519-dalek = "=4.1.3"`. Pinning `curve25519-dalek` directly defends
+  against the yanked 4.2.0 and any future yank.
+- Feature flags: each crate uses `default-features = false`. For `x25519-dalek`
+  we add `static_secrets` (required for `StaticSecret::from([u8; 32])`),
+  `zeroize`, `precomputed-tables`. For `ed25519-dalek` we add `fast` (=
+  `curve25519-dalek/ precomputed-tables`) and `zeroize`. Critically,
+  `ed25519-dalek`'s default `std` feature is **disabled** — it would break the
+  `no_std`-friendly WASM build via `sha2/std`.
+- WASM compatibility: both crates build cleanly on `wasm32-unknown-unknown` with
+  `wasm-pack --target bundler` under the chosen feature set. **No `getrandom` is
+  pulled into the dep graph** — the `js` / `wasm_js` feature dance is avoided
+  entirely by sourcing randomness from JS and passing raw bytes into Rust,
+  matching the existing WebBuf pattern.
+- Audit posture: 2019 Quarkslab audit covered pre-1.0 `subtle` +
+  `curve25519-dalek`; the 4.x / 2.x lines are not under that audit.
+  RUSTSEC-2022-0093 (ed25519-dalek keypair-oracle, fixed 2.0.0) and
+  RUSTSEC-2024-0344 (curve25519-dalek scalar-sub timing leak, fixed 4.1.3) are
+  both already addressed by the pinned versions. README audit-posture wording
+  drafted in A6 above.
+- Test-vector sources: RFC 7748 §5.2/§6.1 for X25519, RFC 8032 §7.1 for Ed25519.
+  Small-order point list NOT in RFC 7748 — comes from Cremers & Jackson "Prime,
+  Order Please!" + Langley notes; WebBuf hard-codes the seven u-coordinates for
+  the all-zero rejection test.
+- Deferred to Experiment 2: empirical `precomputed-tables` size / performance
+  trade-off measurement (we keep the feature on for now; re-evaluate if the
+  inlined-WASM base64 grows beyond the existing WebBuf packages' typical sizes).
+
+The next experiment will build `@webbuf/x25519` end-to-end against this
+pinned-dependency baseline.
