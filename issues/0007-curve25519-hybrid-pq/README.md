@@ -1242,3 +1242,410 @@ The next experiment will build `@webbuf/ed25519` end-to-end against the same
 Experiment 1 pinned-dependency baseline. The pipeline is now proven; that build
 will be largely mechanical, with the design surface concentrated on the Ed25519
 sign/verify API shape and the seed-vs-secret-key distinction.
+
+## Experiment 3: Build `@webbuf/ed25519` end-to-end
+
+### Goal
+
+Ship the `@webbuf/ed25519` package — Rust crate, WASM, TypeScript wrapper,
+tests, README — using the dependency pins from Experiment 1 and the build
+pipeline proven by Experiment 2. After this experiment closes, `@webbuf/ed25519`
+is ready to be paired with `@webbuf/mldsa` in the forthcoming
+composite-signature experiment.
+
+### What this experiment delivers
+
+Same shape as Experiment 2 but for Ed25519:
+
+- New Rust crate `rs/webbuf_ed25519/` with `Cargo.toml`, `src/lib.rs`,
+  `wasm-pack-bundler.zsh`, `LICENSE`.
+- New TypeScript package `ts/npm-webbuf-ed25519/` with the standard
+  webbuf-package layout (the Experiment 2 output is the template).
+- The Rust crate added to `rs/Cargo.toml` workspace `members` and
+  `[patch.crates-io]`.
+- Umbrella `webbuf` package re-exporting the new functions.
+- Tests passing at every layer, including the RFC 8032 §7.1 audit KATs.
+
+### Public API
+
+The TypeScript surface targets a **flat, seed-only** shape. Three exported
+functions, no `KeyPair` object:
+
+```typescript
+// ts/npm-webbuf-ed25519/src/index.ts
+
+/** Derive the 32-byte Ed25519 public key from a 32-byte seed (RFC 8032
+ *  §5.1.5 secret key). */
+export function ed25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32>;
+
+/** Sign a message with PureEdDSA (RFC 8032 §5.1.6). Produces a 64-byte
+ *  (R || S) signature. The signer consumes the raw message bytes
+ *  directly — no prehash. */
+export function ed25519Sign(
+  privKey: FixedBuf<32>,
+  message: WebBuf,
+): FixedBuf<64>;
+
+/** Verify a 64-byte PureEdDSA signature against the public key and
+ *  message (RFC 8032 §5.1.7). Returns `true` for a valid signature,
+ *  `false` for any rejection (wrong key, tampered message, tampered
+ *  signature, non-canonical S, malformed point). Throws only on
+ *  malformed-length input. */
+export function ed25519Verify(
+  pubKey: FixedBuf<32>,
+  message: WebBuf,
+  signature: FixedBuf<64>,
+): boolean;
+```
+
+#### Deviation from the issue's original Scope wording
+
+The issue's outer Scope section originally proposed `ed25519KeyPair()` and
+`ed25519KeyPairFromSeed(seed)`. This experiment drops both in favor of the flat
+`ed25519PublicKeyCreate(privKey)` shape. Reasons:
+
+- Mirrors `@webbuf/x25519` exactly (`x25519PublicKeyCreate(privKey)`), giving
+  consumers a uniform "private key in, public key out" shape across the
+  Curve25519 family.
+- Random keypair generation is one line in JS:
+  `const priv = FixedBuf.fromRandom<32>(32); const pub = ed25519PublicKeyCreate(priv);`.
+  A `KeyPair` object would add type surface for nothing.
+- The "from seed" naming was redundant with the seed-only API shape; if the only
+  input form is a seed, the function name doesn't need to say so.
+
+The Scope section's earlier sketch stays as the original "what we thought"; this
+experiment's design is the pinned reality. Past issues followed the same
+convention (the Scope section is a sketch; the experiments hold the truth).
+
+#### Seed semantics
+
+Ed25519 has a critical seed-vs-expanded distinction:
+
+- **Seed** (32 bytes) — the input to RFC 8032 §5.1.5's derivation. Hashed with
+  SHA-512 to produce the (clamped) signing scalar plus the 32-byte prefix used
+  by the signing nonce. **This is what RFC 8032 calls the "secret key"** and
+  what is stored on disk in OpenSSH, OpenPGP, and KeyPears.
+- **Expanded signing key** (64 bytes internally) — the (clamped scalar ||
+  prefix-hash) pair. Some libraries expose this as the "secret key" surface,
+  which causes interop bugs.
+
+`@webbuf/ed25519` standardizes on **seed-only** for `privKey`. Internally,
+`ed25519-dalek 2.x`'s `SigningKey::from_bytes(&[u8; 32])` takes a seed and
+expands it on every call; that's exactly what we want.
+
+The README will explicitly document this so consumers don't pass a 64-byte
+expanded form by mistake.
+
+#### Verification semantics
+
+`ed25519Verify` returns `boolean`. Failed verification is **not an exception**:
+
+- Wrong key, tampered message, tampered signature, non-canonical `S`,
+  small-order public key, malformed point bytes — all return `false`.
+- Only **input-length errors** (private key not 32 bytes, signature not 64
+  bytes, etc.) throw. The error message text is stable and asserted in tests.
+
+This matches the pattern in `@webbuf/secp256k1` and `@webbuf/p256`'s ECDSA
+verify — verification failure is a value, not an error.
+
+The Rust crate has `legacy_compatibility` **disabled** (per Experiment 1's
+feature-flag decisions). That means strict RFC 8032 §5.1.7 verification
+semantics: signatures with non-canonical `S` are rejected, signatures with
+small-order `R` are rejected. This is a **feature**, not a quirk; document it in
+the README's verification subsection.
+
+### Rust crate
+
+```toml
+# rs/webbuf_ed25519/Cargo.toml — pinned per Experiment 1's Result
+[package]
+name = "webbuf_ed25519"
+description = "Ed25519 PureEdDSA (RFC 8032) for WebBuf with optional WASM support."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+ed25519-dalek = { version = "=2.2.0", default-features = false, features = [
+    "fast",
+    "zeroize",
+] }
+curve25519-dalek = { version = "=4.1.3", default-features = false, features = [
+    "zeroize",
+    "precomputed-tables",
+] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+hex-literal = "0.4.1"
+hex = "0.4.3"
+```
+
+Rust API surface:
+
+```rust
+// rs/webbuf_ed25519/src/lib.rs
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn ed25519_public_key_create(priv_key: &[u8]) -> Result<Vec<u8>, String> {
+    let seed: [u8; 32] = priv_key
+        .try_into()
+        .map_err(|_| "private key must be exactly 32 bytes".to_string())?;
+    let signing_key = SigningKey::from_bytes(&seed);
+    Ok(signing_key.verifying_key().as_bytes().to_vec())
+}
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn ed25519_sign(priv_key: &[u8], message: &[u8]) -> Result<Vec<u8>, String> {
+    let seed: [u8; 32] = priv_key
+        .try_into()
+        .map_err(|_| "private key must be exactly 32 bytes".to_string())?;
+    let signing_key = SigningKey::from_bytes(&seed);
+    let signature: Signature = signing_key.sign(message);
+    Ok(signature.to_bytes().to_vec())
+}
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn ed25519_verify(
+    pub_key: &[u8],
+    message: &[u8],
+    signature: &[u8],
+) -> Result<bool, String> {
+    let pub_arr: [u8; 32] = pub_key
+        .try_into()
+        .map_err(|_| "public key must be exactly 32 bytes".to_string())?;
+    let sig_arr: [u8; 64] = signature
+        .try_into()
+        .map_err(|_| "signature must be exactly 64 bytes".to_string())?;
+
+    // VerifyingKey::from_bytes can fail for non-decompressible points;
+    // treat that as a verification failure (return false), not a length
+    // error.
+    let verifying_key = match VerifyingKey::from_bytes(&pub_arr) {
+        Ok(k) => k,
+        Err(_) => return Ok(false),
+    };
+    let signature = Signature::from_bytes(&sig_arr);
+
+    Ok(verifying_key.verify(message, &signature).is_ok())
+}
+```
+
+#### Rust tests
+
+In `mod tests`, embedded vectors:
+
+1. **RFC 8032 §7.1 TEST 1.** Empty message. Hard-coded seed, public key,
+   expected signature. Asserts `ed25519_public_key_create` matches and
+   `ed25519_sign` produces the published signature.
+2. **RFC 8032 §7.1 TEST 2.** 1-byte message `0x72`.
+3. **RFC 8032 §7.1 TEST 3.** 2-byte message `0xaf 0x82`.
+4. **RFC 8032 §7.1 TEST 1024.** The long-message vector (1023 bytes).
+5. **RFC 8032 §7.1 TEST SHA(abc).** SHA-512(`"abc"`) as the message.
+6. **Round-trip on hard-coded seed.** Sign, then verify, returns true.
+7. **Verify rejects tampered message.** Sign a message; flip a byte;
+   `ed25519_verify` returns `false`.
+8. **Verify rejects tampered signature.** Sign; flip a byte in `R` and in `S`
+   (separately); both return `false`.
+9. **Verify rejects wrong public key.** Sign with seed A; verify with pub-key
+   from seed B; returns `false`.
+10. **Verify rejects malformed public key gracefully.** Pass 32 bytes that
+    aren't a valid Ed25519 point (e.g. all `0xff`); verify returns `false`, not
+    an error.
+11. **Verify input-length errors.** Wrong-length pub key / signature throw with
+    stable error messages.
+
+#### WASM size expectation
+
+Bigger than `webbuf_x25519` because of the SHA-512 prefix-hash that
+`ed25519-dalek` pulls in via `sha2`. Estimate: 100–150 KB. The Result section
+will record actual numbers.
+
+### TypeScript package
+
+Layout copied from `ts/npm-webbuf-x25519/` (i.e. the Experiment 2 output):
+
+```
+ts/npm-webbuf-ed25519/
+├── package.json
+├── tsconfig.json
+├── tsconfig.build.json
+├── build-inline-wasm.ts
+├── README.md
+├── LICENSE
+├── src/
+│   ├── index.ts
+│   ├── rs-webbuf_ed25519-bundler/
+│   └── rs-webbuf_ed25519-inline-base64/
+└── test/
+    ├── index.test.ts
+    └── audit.test.ts
+```
+
+`src/index.ts` skeleton:
+
+```typescript
+import {
+  ed25519_public_key_create,
+  ed25519_sign,
+  ed25519_verify,
+} from "./rs-webbuf_ed25519-inline-base64/webbuf_ed25519.js";
+import { WebBuf } from "@webbuf/webbuf";
+import { FixedBuf } from "@webbuf/fixedbuf";
+
+export function ed25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32> {
+  const pub = ed25519_public_key_create(privKey.buf);
+  return FixedBuf.fromBuf(32, WebBuf.fromUint8Array(pub));
+}
+
+export function ed25519Sign(
+  privKey: FixedBuf<32>,
+  message: WebBuf,
+): FixedBuf<64> {
+  const sig = ed25519_sign(privKey.buf, message);
+  return FixedBuf.fromBuf(64, WebBuf.fromUint8Array(sig));
+}
+
+export function ed25519Verify(
+  pubKey: FixedBuf<32>,
+  message: WebBuf,
+  signature: FixedBuf<64>,
+): boolean {
+  return ed25519_verify(pubKey.buf, message, signature.buf);
+}
+```
+
+#### TypeScript tests
+
+`test/index.test.ts`:
+
+- Round-trip: random `privKey` → derive public → sign + verify random message
+  returns `true`.
+- Length invariants: pub key 32 bytes, signature 64 bytes.
+- Deterministic public-key derivation: fixed seed always produces same public
+  key.
+- Verify false on tampered message.
+- Verify false on tampered signature.
+- Verify false on wrong public key.
+- Verify false on a public key that's not a valid Ed25519 point (all `0xff`
+  bytes).
+
+`test/audit.test.ts`:
+
+- RFC 8032 §7.1 TEST 1 + 2 + 3 + 1024 + SHA(abc) — five byte-precise KAT
+  regressions, each asserting the published public key and the published
+  signature.
+
+### Package README
+
+Mirrors `@webbuf/x25519`'s structure, with adjustments for the sign/verify
+shape:
+
+- Brief: "Ed25519 PureEdDSA (RFC 8032) for WebBuf."
+- Usage example showing keypair derivation, sign, verify.
+- **Seed semantics** subsection: 32-byte seed, NOT a 64-byte expanded form. Cite
+  RFC 8032 §5.1.5.
+- **PureEdDSA only** subsection: no Ed25519ph; consumers wanting a prehash
+  should hash externally and pass the digest as the "message." Cite the issue
+  0007 Decision Log entry.
+- **Strict verification** subsection: `legacy_compatibility` is OFF; signatures
+  with non-canonical `S` and small-order `R` are rejected. This is the modern
+  RFC 8032 §5.1.7 behavior.
+- **Audit posture** subsection: same Quarkslab-2019 wording as `@webbuf/x25519`,
+  plus the **RUSTSEC-2022-0093** note (ed25519-dalek keypair-oracle, fixed in
+  2.0.0; pinned `=2.2.0` is safe).
+- API table.
+- Tests summary.
+- License.
+
+### Umbrella `webbuf` package
+
+Same pattern as Experiment 2:
+
+- `ts/npm-webbuf/package.json`: add `"@webbuf/ed25519": "workspace:^"`.
+- `ts/npm-webbuf/src/index.ts`: add `export * from "@webbuf/ed25519";` alongside
+  `@webbuf/x25519`.
+- Verify with `pnpm install && pnpm run typecheck && pnpm run build:typescript`.
+
+### Risks
+
+1. **Seed vs. expanded confusion.** If a future consumer passes a 64-byte
+   SigningKey output by mistake, our 32-byte API rejects it with a length error
+   — good failure mode, but the README must make the seed convention explicit.
+   Also document that `SigningKey::to_bytes()` in dalek 2.x returns the seed
+   (not the expanded form), so round-tripping through serialization works as
+   expected.
+2. **Signature determinism vs. hedging.** PureEdDSA is deterministic per RFC
+   8032; the same seed + message always produces the same signature. WebBuf does
+   not opt into the hedged-signing variant added in `ed25519-dalek` 2.x (which
+   requires the `rand_core` feature, which is off). This is consistent with
+   KeyPears's audit model. Document the determinism in the README.
+3. **`VerifyingKey::from_bytes` failure handling.** Some 32-byte values aren't
+   valid Ed25519 points (encoding parity issues). The Rust wrapper turns this
+   into `Ok(false)` rather than `Err`, matching the "verify failure is a value,
+   not an exception" contract. Test this explicitly with all-`0xff` bytes.
+4. **WASM size growth.** `sha2` is pulled in via `ed25519-dalek`. The
+   inline-base64 string in the TS package will be larger than `@webbuf/x25519`.
+   Probably acceptable — every cryptographic package has a fixed ~50 KB tax for
+   the WASM glue plus the algorithm-specific code. Measure and decide.
+5. **`Signature::from_bytes` infallibility.** In `ed25519-dalek 2.x`,
+   `Signature::from_bytes(&[u8; 64])` is infallible — any 64 bytes parse into a
+   `Signature` struct, and validation happens in `verify()`. The wrapper is
+   correct on this; the test for tampered signatures still works because
+   `verify()` rejects them.
+6. **Test-vector formatting.** RFC 8032 §7.1 vectors include a 1023-byte
+   message; copy carefully. Use `hex_literal!` and `concat!`-style breaking
+   across multiple lines to keep the source readable. Verify the byte length
+   matches the RFC's claim before running tests.
+
+### Out of scope for this experiment
+
+- `@webbuf/aesgcm-x25519dh-mlkem` — a later experiment. Once both primitives are
+  landed, the hybrid encryption package is largely a copy of
+  `aesgcm-p256dh-mlkem` with X25519 substituted for P-256.
+- Composite Ed25519 + ML-DSA-65 signature package — last experiment in the
+  issue. The Ed25519 sign/verify API delivered here is what the composite
+  package will compose with.
+- Ed25519ph prehash variant — locked out by the Decision Log.
+- Hedged signing variant — out of scope; `rand_core` feature is off.
+- Web Crypto interop helpers — punt.
+- Updating issue 0006 / 0005 / 0004 cross-references — those issues are closed
+  and immutable.
+
+### Success criteria
+
+- `cargo build -p webbuf_ed25519` clean.
+- `cargo test -p webbuf_ed25519 --release` all pass: five RFC 8032 §7.1 KATs
+  (TEST 1, 2, 3, 1024, SHA(abc)), round-trip, tampered-message rejection,
+  tampered-signature rejection, wrong-public-key rejection, malformed-pub-key
+  rejection, input-length errors.
+- `./wasm-pack-bundler.zsh` clean.
+- TS package: `pnpm install`, `pnpm run sync:from-rust && pnpm run build:wasm`,
+  `pnpm run typecheck`, `pnpm test`, `pnpm run build` — all clean.
+- Umbrella `webbuf`: `pnpm run typecheck` and `pnpm run build:typescript` clean
+  after the re-export is added.
+- `awk '/name = "webbuf_ed25519"/,/^$/' rs/Cargo.lock` shows no `getrandom`
+  direct or transitive dep.
+- WASM size measured and noted in the **Result** section.
+
+### Implementation
+
+_(To be filled in when the experiment is run.)_
+
+### Result
+
+_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
+green, with notable observations — RFC 8032 KAT outcomes, WASM size, any
+feature-flag adjustments — recorded.)_
