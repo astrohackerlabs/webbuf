@@ -2087,9 +2087,159 @@ Same pattern as Experiments 2 and 3:
 
 ### Implementation
 
-_(To be filled in when the experiment is run.)_
+Built `@webbuf/aesgcm-x25519dh-mlkem` end-to-end as a pure-TypeScript
+composition over `@webbuf/x25519` (Experiment 2), `@webbuf/mlkem`,
+`@webbuf/sha256`, and `@webbuf/aesgcm`. Files created:
 
-### Result
+- `ts/npm-webbuf-aesgcm-x25519dh-mlkem/` — `package.json`, `tsconfig.json`,
+  `tsconfig.build.json`, `src/index.ts`, `test/index.test.ts`,
+  `test/audit.test.ts`, `README.md`, `LICENSE`.
+- `ts/npm-webbuf/scripts/capture-issue-0007-aesgcm-x25519dh-mlkem-kats.ts` —
+  one-shot capture script for the empty-AAD and non-empty-AAD KATs.
+- `ts/npm-webbuf/package.json` and `ts/npm-webbuf/src/index.ts` updated to add
+  the new package as a dependency and re-export it alongside the existing
+  primitives.
 
-_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
-green, with the captured KAT hashes and any notable observations recorded.)_
+The source lifted directly from `@webbuf/aesgcm-p256dh-mlkem` with three
+substitutions (per the design): `x25519SharedSecretRaw` for
+`p256SharedSecretRaw`, `FixedBuf<32>` for `FixedBuf<33>` on the public-key
+parameters, and version byte `0x03` for `0x02`. HKDF info string updated to
+`"webbuf:aesgcm-x25519dh-mlkem v1"`. Wire format, IKM ordering, salt, AAD
+plumbing, and overall structure unchanged.
+
+### Captured KATs (issue 0007 Experiment 4)
+
+Recipient X25519 public key (derived from the `0x55*32` recipient priv):
+`38ab664bd86f77d7e66bdd9ae0792913a94fd8b33a1260027e4b46c1f4884c67`.
+
+#### Empty-AAD KAT
+
+| Field                 | Value                                                              |
+| --------------------- | ------------------------------------------------------------------ |
+| Sender X25519 priv    | `4444444444444444444444444444444444444444444444444444444444444444` |
+| Recipient X25519 priv | `5555555555555555555555555555555555555555555555555555555555555555` |
+| Recipient X25519 pub  | `38ab664bd86f77d7e66bdd9ae0792913a94fd8b33a1260027e4b46c1f4884c67` |
+| ML-KEM `d`            | `6666666666666666666666666666666666666666666666666666666666666666` |
+| ML-KEM `z`            | `7777777777777777777777777777777777777777777777777777777777777777` |
+| ML-KEM `m`            | `8888888888888888888888888888888888888888888888888888888888888888` |
+| AES-GCM IV            | `999999999999999999999999`                                         |
+| Plaintext             | `"hybrid"` (UTF-8)                                                 |
+| AAD                   | (empty)                                                            |
+| Ciphertext length     | 1123 bytes                                                         |
+| Ciphertext prefix     | `03dbfdf2752836f8…` (version byte + KEM prefix)                    |
+| SHA-256(ct)           | `81ebae8d75e5724131baeb8fa3c03a92767ee0adaab9adbd37212114d9c986e1` |
+
+#### Non-empty-AAD KAT
+
+Same deterministic inputs as the empty-AAD KAT, plus
+`aad = "webbuf:test-aad-v1"` (hex `7765626275663a746573742d6161642d7631`).
+
+| Field             | Value                                                              |
+| ----------------- | ------------------------------------------------------------------ |
+| Ciphertext length | 1123 bytes (unchanged — AAD not transmitted)                       |
+| SHA-256(ct)       | `20ec384a9a43dbd097a5b35205210c115009838fb3064046accefb2dcea0b9c9` |
+
+The AES-CTR body bytes are byte-identical to the empty-AAD KAT (everything
+before the trailing 16-byte AES-GCM tag); only the GHASH tag differs because AAD
+changes the GHASH input but not the AES-CTR keystream. This invariant is
+asserted in `test/audit.test.ts`.
+
+Both KATs were captured by running
+`tsx scripts/capture-issue-0007-aesgcm-x25519dh-mlkem-kats.ts` from
+`ts/npm-webbuf/` after `pnpm run build` of the new package.
+
+### Result: Pass
+
+**Tests (30/30 in the new package, 3/3 in umbrella):**
+
+- `pnpm test` in `ts/npm-webbuf-aesgcm-x25519dh-mlkem` — 30/30 pass: 24 unit
+  tests (round-trip on random / empty / 64 KiB plaintexts, non-determinism,
+  length / version-byte invariants, all rejection paths including wrong
+  recipient / sender / ML-KEM key, tampered KEM / AES / IV, both
+  wrong-version-byte rejections — `0x01` and `0x02` — and truncation, hybrid
+  defense-in-depth showing each shared secret load-bearing, small-order
+  rejection on **both** encrypt and decrypt paths, AAD round-trip / mismatch /
+  missing / extra scenarios, and a KeyPears-style four-field AAD construction
+  with tamper detection) plus 6 audit tests (recipient X25519 public-key
+  derivation, byte-precise empty-AAD KAT regression, wire-format prefix and
+  IV-offset assertions, explicit-empty-AAD-equals-no-AAD-default, non-empty-AAD
+  KAT regression, AAD-changes-tag-not-body invariant).
+- `pnpm test` in the umbrella `ts/npm-webbuf` — 3/3 pass after the re-export was
+  added.
+
+**Builds:**
+
+- `pnpm install`, `pnpm run typecheck`, `pnpm run lint`, `pnpm run build` all
+  clean in `ts/npm-webbuf-aesgcm-x25519dh-mlkem`.
+- `pnpm run typecheck` and `pnpm run build:typescript` clean in the umbrella
+  `ts/npm-webbuf` after the re-export was added.
+
+**Package-main reproduction (Experiment 3 dist-staleness lesson applied):**
+
+A reproduction script importing through the package main
+(`@webbuf/aesgcm-x25519dh-mlkem`) ran inside `ts/npm-webbuf/` after
+`pnpm run build`. All 5 checks pass:
+
+- Empty-AAD KAT SHA-256 matches via package main.
+- Ciphertext begins with `0x03`.
+- AAD round-trip via package main recovers the plaintext.
+- AAD mismatch via package main throws.
+- Small-order recipient pub key (identity element `01 || 00*31`) is rejected on
+  encrypt with the verbatim `non-contributory` error from the underlying
+  `@webbuf/x25519` primitive — confirming the rejection propagates end-to-end
+  through dist.
+
+This closes the dist-staleness hazard category surfaced by Codex in Experiment
+3: the consumer-facing path now exercises the same code paths as the in-package
+vitest tests.
+
+**Risk outcomes (all five green):**
+
+- Risk #1 (HKDF input divergence vs. P-256 sibling): structure identical; X25519
+  SS substitutes the P-256 ECDH X-coord 1-for-1. KAT regressions catch any
+  future drift.
+- Risk #2 (pub-key shape change cascades): `FixedBuf<32>` for X25519 vs.
+  `FixedBuf<33>` for P-256 typechecks correctly; consumers can't cross-wire the
+  two by accident.
+- Risk #3 (`x25519SharedSecretRaw` throws on small-order): rejection surfaced
+  verbatim through the hybrid layer; confirmed by both in-package vitest tests
+  and the package-main reproduction.
+- Risk #4 (capture-script convention): script lives in
+  `ts/npm-webbuf/scripts/capture-issue-0007-aesgcm-x25519dh-mlkem-kats.ts` and
+  follows the issue 0004 / 0006 pattern exactly. Re-runnable for KAT re-capture
+  if dependencies change.
+- Risk #5 (dist staleness): caught by the success-criteria package-main
+  reproduction. Future hybrid-layer code changes need a rebuild before the
+  reproduction passes.
+
+**Public API delivered:**
+
+```typescript
+import {
+  aesgcmX25519dhMlkemEncrypt,
+  aesgcmX25519dhMlkemDecrypt,
+  AESGCM_X25519DH_MLKEM,
+} from "@webbuf/aesgcm-x25519dh-mlkem";
+
+aesgcmX25519dhMlkemEncrypt(
+  senderPrivKey: FixedBuf<32>,
+  recipientPubKey: FixedBuf<32>,
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+aesgcmX25519dhMlkemDecrypt(
+  recipientPrivKey: FixedBuf<32>,
+  senderPubKey: FixedBuf<32>,
+  decapKey: FixedBuf<2400>,
+  ciphertext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+```
+
+The umbrella `webbuf` package re-exports both functions plus the
+`AESGCM_X25519DH_MLKEM` constants object alongside the existing hybrid packages.
+KeyPears can now ship the entire post-quantum encryption migration on the
+Curve25519-first standards track. Only the composite Ed25519 + ML-DSA-65
+signature package remains.
