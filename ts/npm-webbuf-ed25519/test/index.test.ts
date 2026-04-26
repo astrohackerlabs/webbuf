@@ -125,6 +125,29 @@ describe("@webbuf/ed25519 verification rejection paths", () => {
     expect(ed25519Verify(badPub, WebBuf.fromUtf8("anything"), sig)).toBe(false);
   });
 
+  it("returns false on a small-order public key (universal-forgery rejection)", () => {
+    // Identity element on Curve25519: 01 || 00*31. Decompresses to a
+    // valid-but-small-order point. The non-strict `verify` would accept
+    // an identity-R / zero-S signature against ANY message — a universal
+    // forgery. WebBuf calls `verify_strict` under the hood, which closes
+    // this hole.
+    const weakPub = FixedBuf.fromHex(
+      32,
+      "0100000000000000000000000000000000000000000000000000000000000000",
+    );
+    // R = identity (01 || 00*31), S = 0*32.
+    const forgerySig = FixedBuf.fromHex(
+      64,
+      "01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    );
+
+    for (const message of ["", "hello", "forged"]) {
+      expect(
+        ed25519Verify(weakPub, WebBuf.fromUtf8(message), forgerySig),
+      ).toBe(false);
+    }
+  });
+
   it("returns false on an all-zero signature", () => {
     const priv = FixedBuf.fromRandom<32>(32);
     const pub = ed25519PublicKeyCreate(priv);

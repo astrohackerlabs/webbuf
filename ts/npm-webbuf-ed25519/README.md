@@ -76,11 +76,17 @@ use a different primitive or layer your own hedging on top.
 - Only **input-length errors** (private key not 32 bytes, signature not 64
   bytes, etc.) throw.
 
-The underlying Rust crate has `legacy_compatibility` **disabled**. That means
-strict RFC 8032 §5.1.7 verification is enforced: signatures with non-canonical
-`S` (i.e. `S >= L`) are rejected, and signatures with small-order `R` are
-rejected. This matches the modern consensus (cofactored verification with strict
-validation) and is what most modern Ed25519 consumers expect.
+The underlying Rust crate has `legacy_compatibility` **disabled** and the
+wrapper calls `VerifyingKey::verify_strict` (not the cofactored `verify`). That
+means strict RFC 8032 §5.1.7 verification is enforced: signatures with
+non-canonical `S` (i.e. `S >= L`) are rejected, signatures with non-canonical
+`R` are rejected, and **small-order public keys are rejected**. This is what
+most modern Ed25519 consumers expect.
+
+Strict verification matters: without it, a malicious peer presenting the
+Curve25519 identity element as their public key combined with an identity-R /
+zero-S signature would produce a universal forgery accepting any message.
+WebBuf's verifier rejects this case explicitly; a regression test asserts it.
 
 ## API
 
@@ -113,15 +119,19 @@ for the full crate-survey rationale and pinned-version decisions.
 
 ## Tests
 
-- 12 Rust tests: four RFC 8032 §7.1 KATs (TEST 1 empty, TEST 2 1-byte, TEST 3
+- 13 Rust tests: four RFC 8032 §7.1 KATs (TEST 1 empty, TEST 2 1-byte, TEST 3
   2-byte, TEST SHA(abc)), determinism, round-trip, tampered-message rejection,
   tampered-signature rejection (R and S separately), wrong-public-key rejection,
   malformed-public-key graceful rejection, all-zero-signature rejection,
-  input-length error wording.
-- TypeScript tests: round-trip on random keys, length invariants, deterministic
-  public-key + signature derivation, empty-message + 64 KiB message round-trip,
-  all six rejection paths, plus the four RFC 8032 §7.1 audit KATs each asserting
-  public-key derivation, signature production, and verification.
+  input-length error wording, and small-order-public-key universal-forgery
+  rejection (asserts that the identity-element pub key + identity-R / zero-S
+  signature is rejected for any message — this is what `verify_strict` buys us
+  over the cofactored `verify`).
+- 25 TypeScript tests: round-trip on random keys, length invariants,
+  deterministic public-key + signature derivation, empty-message + 64 KiB
+  message round-trip, all seven rejection paths (including the matching
+  universal-forgery regression), plus the four RFC 8032 §7.1 audit KATs each
+  asserting public-key derivation, signature production, and verification.
 
 ```bash
 pnpm test

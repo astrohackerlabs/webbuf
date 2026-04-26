@@ -49,8 +49,12 @@ export function ed25519Sign(
  * malformed-length input — that's the only failure mode treated as an
  * error; verification failure itself is a value, not an exception.
  *
- * Strict RFC 8032 §5.1.7 semantics are enforced (`legacy_compatibility`
- * is disabled at the Rust crate level).
+ * Strict RFC 8032 §5.1.7 semantics are enforced. The wrapper calls
+ * `VerifyingKey::verify_strict` (not the cofactored `verify`), which
+ * rejects small-order public keys, non-canonical R, and non-canonical S.
+ * This is necessary to close the universal-forgery hole that exists
+ * when a malicious peer presents the identity element as their public
+ * key.
  */
 export function ed25519Verify(
   pubKey: FixedBuf<32>,

@@ -1677,20 +1677,48 @@ negative-path tests cover the algorithm behavior comprehensively.
 
 ### Result: Pass
 
-**Tests (12/12 Rust, 24/24 TypeScript):**
+**Tests (13/13 Rust, 25/25 TypeScript):**
 
-- `cargo test -p webbuf_ed25519 --release` — 12/12 pass: four RFC 8032 §7.1 KATs
+- `cargo test -p webbuf_ed25519 --release` — 13/13 pass: four RFC 8032 §7.1 KATs
   (TEST 1 empty, TEST 2 0x72, TEST 3 0xaf 0x82, TEST SHA(abc)), determinism,
   hard-coded round-trip, tampered-message rejection, tampered-signature
   rejection (R and S separately), wrong-public-key rejection,
   malformed-public-key graceful rejection (`Ok(false)`), all-zero-signature
-  rejection, input-length errors with stable messages.
-- `pnpm test` in `ts/npm-webbuf-ed25519` — 24/24 pass: 12 audit (each RFC 8032
-  §7.1 KAT asserts public-key derivation, signature production, and verification
-  — three `it()` blocks per vector × 4 vectors) + 12 unit (round-trip with
-  random keys, length invariants, deterministic public-key
-  - signature derivation, empty-message round-trip, 64 KiB message round-trip,
-    all six rejection paths).
+  rejection, input-length errors with stable messages, and the small-order
+  public-key universal-forgery rejection (added after the Codex review — see
+  "Post-merge fix" below).
+- `pnpm test` in `ts/npm-webbuf-ed25519` — 25/25 pass: 12 audit + 13 unit,
+  including the matching universal-forgery rejection test mirroring the Rust
+  regression.
+
+#### Post-merge fix: `verify` → `verify_strict`
+
+A Codex review of the initial commit caught that the Rust wrapper was calling
+`verifying_key.verify(...)`, which is the **cofactored** (non-strict)
+verification path in `ed25519-dalek 2.x`. This contradicted the issue's claim
+and the `@webbuf/ed25519` README's claim of strict RFC 8032 §5.1.7 semantics:
+small-order public keys would have been accepted, and a malicious peer
+presenting the identity element as their public key combined with an identity-R
+/ zero-S signature could produce a universal forgery against any message.
+
+**Fix:** swapped to `verifying_key.verify_strict(...)`, which is dalek's
+strict-verification entry point (rejects small-order pub keys, rejects
+non-canonical R encoding, rejects non-canonical S). Added a Rust regression test
+`verify_strict_rejects_small_order_public_key_universal_forgery` that constructs
+the identity-element public key (`01 || 00 * 31`) and the identity-R / zero-S
+signature, then asserts rejection across three distinct messages (`""`,
+`"hello"`, `"forged"`). Mirrored as a TypeScript test in `test/index.test.ts`.
+
+The `verify_rejects_malformed_public_key_gracefully` test (which uses
+`0xff * 32`) still passes for an unrelated reason — that point isn't
+decompressible at all, so `VerifyingKey::from_bytes` short-circuits to `Err` and
+the wrapper returns `Ok(false)` without ever reaching the verifier. The
+small-order-rejection test is the one that actually exercises
+strict-vs-cofactored verification.
+
+WASM size grew slightly (118,001 → 119,712 bytes; +1.7 KiB) because
+`verify_strict`'s code path is distinct from `verify`'s and pulls in a small
+amount of additional machinery. Still well within the Experiment 3 budget.
 
 **Builds:**
 
@@ -1703,7 +1731,8 @@ negative-path tests cover the algorithm behavior comprehensively.
 
 **WASM size:**
 
-- `webbuf_ed25519_bg.wasm`: **118,001 bytes (~115 KiB)**.
+- `webbuf_ed25519_bg.wasm`: **119,712 bytes (~117 KiB)** after the
+  `verify_strict` post-merge fix (118,001 / ~115 KiB before).
 - For comparison: `webbuf_x25519` is 67 KiB (no SHA-512); `webbuf_p256` is 78
   KiB; `webbuf_secp256k1` is 99 KiB. Ed25519's larger size is the SHA-512
   prefix-hash machinery — expected, within the 100–150 KB Experiment-3 estimate,

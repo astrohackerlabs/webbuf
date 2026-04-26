@@ -1,4 +1,4 @@
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -57,7 +57,13 @@ pub fn ed25519_verify(
     };
     let signature = Signature::from_bytes(&sig_arr);
 
-    Ok(verifying_key.verify(message, &signature).is_ok())
+    // verify_strict (vs. verify): rejects small-order public keys,
+    // non-canonical R, and non-canonical S — the full RFC 8032 §5.1.7
+    // strict-verification contract. Plain verify() admits small-order
+    // pub keys (cofactored verification), which would allow universal
+    // forgery against a malicious peer presenting the identity element
+    // as their public key. We deliberately want strict semantics.
+    Ok(verifying_key.verify_strict(message, &signature).is_ok())
 }
 
 #[cfg(test)]
@@ -262,6 +268,44 @@ mod tests {
 
         let result = ed25519_verify(&bad_pub, message, &signature);
         assert_eq!(result, Ok(false));
+    }
+
+    /// Strict verification rejects small-order public keys, closing the
+    /// universal-forgery hole that exists when using non-strict
+    /// `verify()`. The identity element of Curve25519 (encoded as
+    /// `01 || 00 * 31`) is a valid (decompressible) but small-order
+    /// public key. Combined with an identity-R / zero-S signature, the
+    /// non-strict verifier would accept ANY message under this key.
+    /// `verify_strict` rejects it, so `ed25519_verify` returns
+    /// `Ok(false)` for every message.
+    ///
+    /// See https://github.com/dalek-cryptography/curve25519-dalek/blob/main/ed25519-dalek/src/verifying.rs
+    /// for the verify_strict vs. verify behavior split.
+    #[test]
+    fn verify_strict_rejects_small_order_public_key_universal_forgery() {
+        // Identity element on Curve25519: 01 || 00 * 31.
+        let weak_pub: [u8; 32] = {
+            let mut p = [0u8; 32];
+            p[0] = 1;
+            p
+        };
+        // Identity-R || zero-S — the canonical universal-forgery
+        // signature against the non-strict verifier.
+        let forgery_sig: [u8; 64] = {
+            let mut s = [0u8; 64];
+            s[0] = 1;
+            s
+        };
+
+        for message in [b"" as &[u8], b"hello", b"forged"] {
+            let result = ed25519_verify(&weak_pub, message, &forgery_sig);
+            assert_eq!(
+                result,
+                Ok(false),
+                "small-order pub key + forgery sig must be rejected for message {:?}",
+                message,
+            );
+        }
     }
 
     /// Verification gracefully rejects an all-zero R signature on a
