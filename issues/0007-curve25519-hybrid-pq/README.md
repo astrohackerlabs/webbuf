@@ -305,3 +305,228 @@ After this issue closes:
 Experiments will be designed and recorded incrementally — one at a time, with
 each experiment's outcome shaping the next. No experiment sequence is committed
 upfront.
+
+## Experiment 1: Dalek-cryptography crate survey
+
+### Goal
+
+Survey the `dalek-cryptography` ecosystem and decide — before writing any Rust —
+exactly which crates, versions, and feature flags WebBuf will pin for
+`@webbuf/x25519` and `@webbuf/ed25519`. Mirrors the survey work that issue 0001
+/ 0002 did for the post-quantum crates: cheap insurance against picking the
+wrong dependency or the wrong feature mix and discovering it mid-build.
+
+This experiment writes no Rust code and ships no package. Output is a filled-in
+**Result** section below with concrete decisions: crate name, exact version
+(`= "x.y.z"`), enabled features, disabled defaults, WASM build notes, and any
+gotchas to document in the eventual TS package README.
+
+### Why a survey first
+
+Issue 0001 surveyed the RustCrypto PQC ecosystem before touching code, and that
+work paid off twice:
+
+- It surfaced the `ml-dsa` rc.8 cluster of CVE-class advisories before WebBuf
+  depended on the crate, which fed into the exact-pin policy documented in issue
+  0001's conclusion.
+- Issue 0005 tightened that pin further after Codex caught a `^` range slip —
+  the survey set the precedent and the mistake was caught.
+
+The Dalek crates are more mature than the PQC crates (the v1.0 audit landed in
+2019), but the ecosystem still has decisions worth making deliberately:
+
+- Two ed25519 worlds — the trait-defining `ed25519` crate (RustCrypto ecosystem)
+  and the implementing `ed25519-dalek` crate. They interop but are not the same.
+- `x25519-dalek` is a thin layer over `curve25519-dalek`; we want to know
+  whether to depend on the high-level crate, the low-level crate, or both.
+- The crates have rapidly-changing feature flags — `static_secrets`,
+  `precomputed-tables`, `zeroize`, `reusable_secrets`, `serde`, `digest`,
+  `rand_core`, `legacy_compatibility`. Picking the wrong combination costs
+  binary size, build time, or correctness.
+- WASM compatibility with `wasm32-unknown-unknown` requires careful `getrandom`
+  / `rand_core` configuration. WebBuf's build pipeline (`wasm-pack` → bundler →
+  base64-inline → TS) has specific expectations and failures here are easy to
+  misdiagnose.
+
+### Plan
+
+Answer each of the questions below by reading crate documentation, `Cargo.toml`,
+the `dalek-cryptography` GitHub README, the RUSTSEC advisory database, and the
+existing WebBuf packages that wrap similar crates. Record one decision per
+question in the **Result** section.
+
+Use the `Plan` agent (or a focused subagent) to parallelize where the questions
+are independent.
+
+#### Q1: Which crate(s) for `@webbuf/x25519`?
+
+- Compare `x25519-dalek` (high-level X25519) and `curve25519-dalek` (low-level
+  field/group operations). Confirm `x25519-dalek` exposes the API we need
+  (`PublicKey`, `StaticSecret`, `EphemeralSecret`,
+  `SharedSecret::was_contributory()`).
+- Confirm `x25519-dalek` is the right dependency layer (high-level) rather than
+  reaching into `curve25519-dalek` directly.
+- Pick the **exact** latest stable version on crates.io. As of writing the line
+  is `x25519-dalek = "2.x"`. Find the most-recent point release with no open
+  RUSTSEC advisories.
+
+#### Q2: Which crate(s) for `@webbuf/ed25519`?
+
+- Compare `ed25519-dalek` (Dalek implementation) and `ed25519` (RustCrypto trait
+  crate that `ed25519-dalek` interops with).
+- Confirm we depend only on `ed25519-dalek`. The `ed25519` trait crate is
+  interesting for downstream consumers but adds a dependency for no benefit if
+  WebBuf isn't exposing the trait surface.
+- Pick the exact latest stable version. The line is `ed25519-dalek = "2.x"`.
+
+#### Q3: Feature flags — what to enable, what to disable
+
+For each of `x25519-dalek` and `ed25519-dalek`, decide:
+
+- `default-features = false` — almost certainly yes, to avoid pulling in
+  unwanted defaults. Confirm by listing what defaults are.
+- `zeroize` — yes; matches WebBuf's existing posture on private-key crates (the
+  secp256k1 wrapper enables zeroization).
+- `static_secrets` (x25519-dalek) — needed to expose `StaticSecret` alongside
+  `EphemeralSecret`. WebBuf's API takes a private key in hand, so static is the
+  right shape.
+- `reusable_secrets` (x25519-dalek) — probably no; `EphemeralSecret` is
+  single-use by design and reusable secrets are a footgun.
+- `precomputed-tables` (curve25519-dalek; transitively important) — trades
+  binary size for performance. WebBuf's WASM pipeline has been
+  binary-size-conscious historically; defer the decision to a measured
+  comparison in Experiment 2 if size matters more than speed for our consumers.
+- `digest` / `rand_core` (ed25519-dalek) — investigate whether PureEdDSA signing
+  requires either. Pin versions if pulled transitively.
+- `serde` — no. WebBuf serializes through `WebBuf` / `FixedBuf`, not serde.
+- `legacy_compatibility` (ed25519-dalek) — no, unless we have a consumer
+  demanding pre-RFC-8032 verification semantics. KeyPears doesn't.
+
+For each, record the chosen flag list and the rationale.
+
+#### Q4: WASM target compatibility
+
+- Confirm `x25519-dalek` and `ed25519-dalek` compile to `wasm32-unknown-unknown`
+  with `wasm-pack --target bundler`.
+- Identify any `getrandom` configuration needed. The crates use
+  `rand_core::CryptoRng` for randomness; in WASM the underlying source is
+  `getrandom`, which historically requires the `js` feature on `getrandom 0.2.x`
+  but that requirement is changing with `getrandom 0.3.x`. Pin or document
+  whichever applies.
+- Note any `unstable_features` warnings or build-time gotchas.
+- Cross-check against the existing PQ packages (`@webbuf/mlkem`,
+  `@webbuf/mldsa`) to confirm the pipeline pattern is reusable.
+
+#### Q5: Audit and CVE history
+
+- Pull the public audit history. The 2019 Trail of Bits audit covered v1.0 of
+  the dalek crates; subsequent v2.x changes are not under that audit. Note this
+  for the `@webbuf/x25519` and `@webbuf/ed25519` README audit-posture sections.
+- Search RUSTSEC for `x25519-dalek`, `ed25519-dalek`, and `curve25519-dalek`
+  advisories. Document any historical CVEs and their fix versions.
+- Compare the audit posture to the WebBuf-PQC crates: the Dalek line is
+  significantly more mature, which should be reflected in the package README
+  warnings (a softer "no recent audit on 2.x" rather than the PQC packages' "no
+  public audit at all" wording).
+
+#### Q6: Existing WebBuf parallels
+
+- Read `rs/webbuf_p256/Cargo.toml`, `rs/webbuf_p256/src/lib.rs`,
+  `rs/webbuf_p256/wasm-pack-bundler.zsh`, and the corresponding TypeScript
+  wrapper to understand the established patterns for signature / ECDH primitives
+  in WebBuf.
+- Read `rs/webbuf_secp256k1/Cargo.toml` and source for the same reason — the
+  long-standing wrapper for an elliptic curve crate.
+- Read `rs/webbuf_mlkem/Cargo.toml` to confirm the exact-pin pattern
+  (`= "x.y.z"`) and the `wasm` feature gating.
+- Document any conventions to copy: how the `wasm` feature is conditionally
+  exported via `cfg_attr`, how zeroization is plumbed, how randomness is
+  sourced.
+
+#### Q7: KAT and test-vector source
+
+- Identify the official RFC 7748 / RFC 8032 test vectors WebBuf will use to
+  validate the eventual `@webbuf/x25519` and `@webbuf/ed25519` implementations.
+  Both RFCs include canonical vectors.
+- Identify small-order public points for the X25519 all-zero rejection test (RFC
+  7748 §6.1 and the cryptographic-frontier literature list eight points;
+  `x25519-dalek` has them in test fixtures we can re-use).
+- Note these as inputs for the eventual implementation experiments; they don't
+  need to be captured in this experiment's output, just pointed at.
+
+### Risks
+
+1. **Picking the wrong feature set surfaces only at build time.** A feature flag
+   that pulls in a `std`-requiring transitive dependency can fail the WASM build
+   cryptically. Mitigation: explicitly list the feature decisions in the survey
+   and run a smoke `cargo check --target wasm32-unknown-unknown` for each crate
+   before committing to the choices in Experiment 2.
+2. **`getrandom` API churn.** The 0.2.x → 0.3.x transition reshuffled the `js`
+   feature requirements; pinning to whichever the latest `x25519-dalek` /
+   `ed25519-dalek` transitively pull in needs to match what WebBuf's existing
+   WASM pipeline uses. Cross-check against `Cargo.lock` for the existing PQ
+   packages.
+3. **Audit-posture wording temptation.** The dalek crates' 2019 v1.0 audit might
+   tempt us to write a stronger audit claim than is accurate for the current 2.x
+   line. Resolve by stating the verifiable fact ("v1.0 audited by Trail of Bits
+   in 2019; 2.x not under that audit") rather than the warmer-sounding
+   paraphrase.
+4. **Decision creep into Experiment 2.** It's tempting to also pre-decide
+   build-pipeline details (the exact `wasm-pack-bundler.zsh` contents, the TS
+   wrapper API surface). Resist. Experiment 1 stops at "pinned dependencies and
+   feature flags." Experiment 2 will build the package, including the pipeline
+   scripts.
+
+### Out of scope for this experiment
+
+- Writing any Rust code.
+- Building any wasm artifact.
+- Designing the TypeScript wrapper API surface (that lives in the per-package
+  experiments — Experiment 2+).
+- Designing or implementing `@webbuf/aesgcm-x25519dh-mlkem` or the composite
+  signature package.
+- Choosing a name for the composite signature package.
+- Deciding `precomputed-tables` empirically — that decision wants a measured
+  size/perf trade-off comparison, which is appropriate work for Experiment 2
+  once we can actually compile.
+
+### Success criteria
+
+The experiment is complete (recorded as **Result: Pass**) when the following are
+decided and documented in this issue:
+
+- Pinned exact versions for `x25519-dalek`, `ed25519-dalek`, and (transitively)
+  `curve25519-dalek`.
+- Feature flag set (enabled / disabled defaults) for each direct dependency.
+- Confirmed WASM compatibility with `wasm32-unknown-unknown` plus any required
+  `getrandom` / `rand_core` configuration.
+- Audit / RUSTSEC summary suitable for verbatim use in the `@webbuf/x25519` and
+  `@webbuf/ed25519` README audit-posture sections.
+- Pointers to the WebBuf packages whose `Cargo.toml` / `wasm-pack-bundler.zsh`
+  patterns we'll copy in Experiment 2.
+- Pointers to the RFC 7748 / RFC 8032 official test vectors and the small-order
+  points list.
+
+If any question above resolves to "we don't know yet, need to build to find out"
+(e.g. `precomputed-tables` size impact), explicitly defer it to Experiment 2 in
+the **Result** section rather than guessing.
+
+### Implementation
+
+_(To be filled in when the experiment is run. The implementation is a research
+pass — read crate docs, Cargo manifests, RUSTSEC advisories, existing WebBuf
+packages — and record the decisions per question below.)_
+
+### Result
+
+_(To be filled in. Expected shape:_
+
+```toml
+# Pinned dependencies for @webbuf/x25519 and @webbuf/ed25519
+x25519-dalek    = { version = "= X.Y.Z", default-features = false, features = ["..."] }
+ed25519-dalek   = { version = "= A.B.C", default-features = false, features = ["..."] }
+# Plus transitively-pinned curve25519-dalek if not implied.
+```
+
+_followed by audit-posture text and any gotchas. Mark **Result: Pass** once
+recorded.)_
