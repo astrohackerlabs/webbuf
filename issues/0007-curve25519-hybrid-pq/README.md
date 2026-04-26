@@ -90,8 +90,8 @@ consumers.
 **Signature hybrid:**
 
 - OpenPGP composite: Ed25519 + ML-DSA-65, two independent signatures over the
-  same message digest, both required to verify. RFC drafts:
-  `draft-ietf-openpgp-pqc`.
+  same raw message bytes (no external prehash on either side), both required to
+  verify. RFC drafts: `draft-ietf-openpgp-pqc`.
 - The X.509 LAMPS work is parallel: `id-Ed25519-MLDSA65` and `id-Ed448-MLDSA87`
   composite OIDs. Still pre-RFC.
 - The construction is "sign with both, verify with both" — no exotic key
