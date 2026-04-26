@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/aesgcm-p256dh",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "AES-GCM authenticated encryption with P-256 (NIST) Diffie-Hellman shared secret for web, node.js, deno and bun.",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/aesgcm-mlkem",
-  "version": "3.6.0",
+  "version": "3.7.0",
   "description": "AES-256-GCM with ML-KEM-768 key encapsulation: post-quantum authenticated encryption for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
