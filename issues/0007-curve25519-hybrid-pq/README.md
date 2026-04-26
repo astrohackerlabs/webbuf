@@ -1790,3 +1790,306 @@ The umbrella `webbuf` package re-exports all three functions alongside the
 existing primitives. The Curve25519 family (X25519 + Ed25519) is now complete in
 WebBuf and ready to be paired with `@webbuf/mlkem` and `@webbuf/mldsa` in the
 hybrid packages — the next experiments in this issue.
+
+## Experiment 4: Build `@webbuf/aesgcm-x25519dh-mlkem` end-to-end
+
+### Goal
+
+Ship the `@webbuf/aesgcm-x25519dh-mlkem` package — the Curve25519-flavored
+sibling of `@webbuf/aesgcm-p256dh-mlkem` from issue 0004. Hybrid
+classical+post-quantum authenticated encryption: AES-256-GCM keyed by
+HKDF-SHA-256 over `(X25519 SS || ML-KEM-768 SS)`. Inherits AAD support through
+`@webbuf/aesgcm` (issue 0006). Inherits small-order rejection through
+`@webbuf/x25519` (Experiment 2).
+
+After this experiment closes, KeyPears can ship the entire post-quantum
+encryption migration on the Curve25519-first standards track. Only the composite
+Ed25519 + ML-DSA-65 signature package remains.
+
+### What this experiment delivers
+
+- Pure-TypeScript package — **no new Rust crate**. The package is a composition
+  over `@webbuf/x25519`, `@webbuf/mlkem`, `@webbuf/sha256`, and `@webbuf/aesgcm`
+  exactly the way `@webbuf/aesgcm-p256dh-mlkem` composes those primitives over
+  P-256.
+- New TypeScript package at `ts/npm-webbuf-aesgcm-x25519dh-mlkem/` with
+  `package.json`, `tsconfig.json`, `tsconfig.build.json`, `src/index.ts`,
+  `test/index.test.ts`, `test/audit.test.ts`, `README.md`, `LICENSE`.
+- Captured byte-precise KAT script at
+  `ts/npm-webbuf/scripts/capture-issue-0007-aesgcm-x25519dh-mlkem-kats.ts` that
+  produces both an empty-AAD KAT and a non-empty-AAD KAT, embedded in this
+  experiment's Result section and asserted in `test/audit.test.ts`.
+- Umbrella `webbuf` package re-exporting the new functions.
+- Tests passing at every layer: unit, AAD, KAT regression, hybrid
+  defense-in-depth.
+
+### Why this is mostly mechanical
+
+The composition is identical to `@webbuf/aesgcm-p256dh-mlkem` byte-for-byte in
+shape:
+
+```
+ikm  = x25519SS || mlkemSS  (32 + 32 = 64 bytes; classical first, PQ second)
+salt = 0^32
+info = UTF-8("webbuf:aesgcm-x25519dh-mlkem v1")
+PRK  = HMAC-SHA-256(salt, ikm)
+K    = HMAC-SHA-256(PRK, info || 0x01)
+```
+
+Only three things differ from the P-256 sibling:
+
+1. **Classical primitive:** `x25519SharedSecretRaw(privKey, pubKey)` instead of
+   `p256SharedSecretRaw(privKey, pubKey)`. Both return 32 bytes; the X25519
+   version additionally throws on non-contributory shared secrets (small-order
+   peer pub key).
+2. **Public key shape:** X25519 public keys are `FixedBuf<32>` (raw u-coordinate
+   per RFC 7748), not the `FixedBuf<33>` SEC1-compressed shape used by P-256.
+   Type signatures change accordingly.
+3. **Wire-format version byte:** `0x03` (vs. `0x02` for the P-256 hybrid and
+   `0x01` for pure-PQ). This lets the decryptor reject ciphertexts produced by
+   the wrong-flavored hybrid package up front with a clear error.
+
+HKDF info string is package-specific (`"webbuf:aesgcm-x25519dh-mlkem v1"`);
+salt, IKM ordering, AES-GCM IV size (12), AAD plumbing, and overall wire-format
+layout (`version || kemCt || iv || aesCt || tag`) are identical to the P-256
+sibling.
+
+### Public API
+
+```typescript
+// ts/npm-webbuf-aesgcm-x25519dh-mlkem/src/index.ts
+
+export function aesgcmX25519dhMlkemEncrypt(
+  senderPrivKey: FixedBuf<32>,
+  recipientPubKey: FixedBuf<32>, // 32 bytes, not 33 — RFC 7748 u-coordinate
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+export function aesgcmX25519dhMlkemDecrypt(
+  recipientPrivKey: FixedBuf<32>,
+  senderPubKey: FixedBuf<32>, // 32 bytes
+  decapKey: FixedBuf<2400>,
+  ciphertext: WebBuf,
+  aad?: WebBuf,
+): WebBuf;
+
+export function _aesgcmX25519dhMlkemEncryptDeterministic(
+  senderPrivKey: FixedBuf<32>,
+  recipientPubKey: FixedBuf<32>,
+  recipientEncapKey: FixedBuf<1184>,
+  plaintext: WebBuf,
+  m: FixedBuf<32>,
+  iv: FixedBuf<12>,
+  aad?: WebBuf,
+): WebBuf;
+
+export const AESGCM_X25519DH_MLKEM: {
+  versionByte: 0x03;
+  kemCiphertextSize: 1088;
+  ivSize: 12;
+  tagSize: 16;
+  fixedOverhead: 1117;
+  hkdfInfo: "webbuf:aesgcm-x25519dh-mlkem v1";
+};
+```
+
+### Wire format
+
+Identical layout to `@webbuf/aesgcm-p256dh-mlkem`, distinguished by version
+byte:
+
+| Offset   | Length | Field                                  |
+| -------- | ------ | -------------------------------------- |
+| 0        | 1      | Version byte: `0x03`                   |
+| 1        | 1088   | ML-KEM-768 ciphertext                  |
+| 1089     | 12     | AES-GCM IV                             |
+| 1101     | N      | AES-GCM ciphertext (N = plaintext.len) |
+| 1101 + N | 16     | AES-GCM authentication tag             |
+
+Total fixed overhead: **1117 bytes** (same as both siblings).
+
+A `0x01` ciphertext (pure-PQ `@webbuf/aesgcm-mlkem`) or a `0x02` ciphertext
+(P-256 hybrid `@webbuf/aesgcm-p256dh-mlkem`) fed into
+`aesgcmX25519dhMlkemDecrypt` fails fast with a clear version-byte error, not a
+silent AEAD-tag mismatch.
+
+### Captured KATs
+
+Two byte-precise KATs captured in this experiment, embedded in the Result
+section, and asserted in `test/audit.test.ts`:
+
+#### Empty-AAD KAT
+
+Deterministic inputs:
+
+- Sender X25519 priv: `0x44 * 32`
+- Recipient X25519 priv: `0x55 * 32` (recipient pub derived)
+- ML-KEM `d` (seed 1): `0x66 * 32`
+- ML-KEM `z` (seed 2): `0x77 * 32`
+- ML-KEM `m` (encap rand): `0x88 * 32`
+- AES-GCM IV: `0x99 * 12`
+- Plaintext (UTF-8): `"hybrid"`
+- AAD: empty
+
+Output: ciphertext length 1123, captured `SHA-256(ciphertext)` recorded in the
+Result section.
+
+#### Non-empty AAD KAT
+
+Same deterministic inputs as the empty-AAD KAT, plus:
+
+- AAD (UTF-8): `"webbuf:test-aad-v1"`
+
+Output: ciphertext length 1123 (unchanged — AAD not transmitted), different
+`SHA-256(ciphertext)` because AAD changes the GHASH tag.
+
+These match the issue 0004 / 0006 KAT capture conventions exactly, so the test
+files mirror the existing audit suite.
+
+### Tests
+
+`test/index.test.ts`:
+
+- Random round-trip: random sender + recipient X25519 keypairs, random ML-KEM
+  keypair, random plaintext → encrypt + decrypt recovers.
+- Empty plaintext round-trip.
+- 64 KiB plaintext round-trip.
+- Non-determinism: two encrypts of the same
+  `(senderPriv, recipientPub, encapKey, plaintext)` produce different
+  ciphertexts (fresh ML-KEM randomness + fresh IV).
+- Length invariant: `ciphertext.length === fixedOverhead + plaintext.length` for
+  various plaintext sizes.
+- Version-byte assertion: ciphertext begins with `0x03`.
+- Wrong-recipient rejection: a different X25519 recipient key fails decryption.
+- Wrong-sender rejection: a different X25519 sender key fails decryption.
+- Wrong ML-KEM keypair rejection.
+- Tampered KEM ciphertext rejection.
+- Tampered AES ciphertext rejection.
+- Tampered IV rejection.
+- Wrong version byte (`0x02` for P-256 hybrid, `0x01` for pure-PQ) rejected with
+  a clear error.
+- Truncated ciphertext rejected with a length error.
+- AAD round-trip with non-empty AAD.
+- AAD mismatch rejection.
+- Encrypt-with-AAD-decrypt-without-AAD rejection (and vice versa).
+- **Hybrid defense-in-depth tests** mirroring the P-256 sibling:
+  - Wrong ML-KEM key with right X25519 keys → fails (ML-KEM is load-bearing).
+  - Right ML-KEM key with wrong X25519 inputs → fails (X25519 is load-bearing).
+- **Small-order peer pub key rejection at the hybrid layer.** Use the
+  identity-element X25519 u-coordinate (`01 || 00*31`, decompressible but
+  small-order) as the peer public key passed to encrypt; expect the underlying
+  `x25519SharedSecretRaw` to throw the `non-contributory` error, surfaced
+  verbatim by the hybrid layer. This is the issue 0007 small-order-rejection
+  guarantee extended end-to-end through the hybrid construction.
+
+`test/audit.test.ts`:
+
+- Empty-AAD KAT regression: byte-precise SHA-256 of ciphertext.
+- Non-empty-AAD KAT regression: byte-precise SHA-256 of ciphertext.
+- Wire-format prefix bytes: version byte `0x03`, KEM-ciphertext prefix bytes
+  from the captured KAT, IV at offset 1089.
+- Recipient X25519 public-key derivation matches the captured value.
+- AAD changes only the AES-GCM tag, not the AES-CTR body (same invariant test as
+  the P-256 sibling).
+
+### Package README
+
+Mirrors `@webbuf/aesgcm-p256dh-mlkem`'s structure with three swaps:
+
+- "Curve25519-flavored sibling of `@webbuf/aesgcm-p256dh-mlkem`" framing in the
+  opening paragraph.
+- HKDF info string and version byte updated.
+- A new **Small-order rejection** subsection cross-referencing
+  `@webbuf/x25519`'s contributory-check, which propagates to this package's
+  encrypt path. Without it, a malicious peer presenting a small-order public key
+  could collapse the hybrid scheme to PQ-only; WebBuf rejects this case by
+  throwing inside `x25519SharedSecretRaw` before HKDF runs.
+- An **Audit posture** subsection combining the Curve25519 (Quarkslab 2019,
+  RUSTSEC-2024-0344) and ML-KEM (no public audit) postures, plus a clear "this
+  is the recommended Curve25519-first hybrid encryption package" framing
+  parallel to what `@webbuf/aesgcm-p256dh-mlkem` says for the P-256 path.
+
+### Umbrella `webbuf` package
+
+Same pattern as Experiments 2 and 3:
+
+- `ts/npm-webbuf/package.json`: add
+  `"@webbuf/aesgcm-x25519dh-mlkem": "workspace:^"` to dependencies.
+- `ts/npm-webbuf/src/index.ts`: add
+  `export * from "@webbuf/aesgcm-x25519dh-mlkem";` alongside the existing
+  exports.
+- Verify with `pnpm install`, `pnpm run typecheck`, `pnpm run build:typescript`.
+
+### Risks
+
+1. **HKDF input divergence vs. the P-256 sibling.** The IKM ordering (classical
+   first, PQ second), salt (32 zero bytes), and overall structure are identical.
+   The only difference is the X25519 SS replaces the P-256 ECDH X-coordinate.
+   Both are 32 bytes; the substitution is direct. Risk is low; KAT regression
+   catches any divergence.
+2. **Pub-key shape change cascades through types.** Going from `FixedBuf<33>` to
+   `FixedBuf<32>` is a hard type change, which is exactly what we want — a P-256
+   pub key won't accidentally pass typecheck against an X25519 parameter. The
+   trade-off is that consumers carrying both pub-key types in the same code path
+   need to keep them straight. Acceptable; better than overloading
+   `FixedBuf<32>` to mean two different curve outputs.
+3. **`x25519SharedSecretRaw` throws, `p256SharedSecretRaw` does not.** The
+   X25519 primitive rejects non-contributory shared secrets; the P-256 primitive
+   does not have an equivalent rejection (P-256 doesn't have small-order points
+   the way Curve25519 does). The hybrid encrypt path needs to surface the X25519
+   throw as a consumer-facing error, not silently mask it. Test path covers
+   this.
+4. **Capture-script convention.** Issue 0004 captured KATs in
+   `ts/npm-webbuf/scripts/capture-*.ts`. Issue 0006 followed the same pattern.
+   Experiment 4 reuses it: the new capture script lives at
+   `ts/npm-webbuf/scripts/capture-issue-0007-aesgcm-x25519dh-mlkem-kats.ts`,
+   imports from the just-built dist of `@webbuf/aesgcm-x25519dh-mlkem`, and
+   prints both the empty-AAD and non-empty-AAD `SHA-256(ciphertext)` values for
+   embedding here.
+5. **`dist`-staleness hazard.** The capture script imports from the compiled
+   `dist/` to exercise the same bytes a consumer would. After any source change,
+   the package needs to be rebuilt before the capture script runs — same hazard
+   as Experiment 3 surfaced via `verify_strict`. Mitigation: capture script is
+   run after `pnpm run build` of the new package, and the captured hash gets
+   pinned in `test/audit.test.ts` which runs against source on every commit,
+   catching any future drift.
+
+### Out of scope for this experiment
+
+- Composite Ed25519 + ML-DSA-65 signature package — final experiment.
+- Pure-PQ X25519-less variant — that's already `@webbuf/aesgcm-mlkem`; nothing
+  to do.
+- Updating `@webbuf/aesgcm-p256dh-mlkem` to point at this package as the
+  recommended Curve25519 alternative. Cross-linking lives in the new package's
+  README; the existing P-256 hybrid stays as-is per the closed-issue
+  immutability rule.
+- Web Crypto interop helpers.
+- `precomputed-tables` size measurement for the X25519 primitive — already
+  settled in Experiment 2.
+
+### Success criteria
+
+- `pnpm install` in `ts/` resolves the new package.
+- `pnpm run typecheck` clean in `ts/npm-webbuf-aesgcm-x25519dh-mlkem`.
+- `pnpm run build` clean (`dist/` produced).
+- `pnpm test` all pass: unit tests (round-trip, all rejection paths, AAD
+  scenarios, hybrid defense-in-depth, small-order rejection) plus audit tests
+  (both KATs, prefix bytes, AAD-changes-tag-not-body).
+- The capture script runs cleanly, emits the two SHA-256 hashes, and the hashes
+  match what's pinned in `test/audit.test.ts`.
+- Umbrella `ts/npm-webbuf/`: `pnpm run typecheck`, `pnpm run build:typescript`,
+  `pnpm test` clean after the re-export is added.
+- A package-main reproduction (importing through `dist/index.js` after
+  `pnpm run build`) confirms the small-order rejection and AAD enforcement reach
+  consumers — same dist-staleness check that surfaced the Experiment 3 issue.
+
+### Implementation
+
+_(To be filled in when the experiment is run.)_
+
+### Result
+
+_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
+green, with the captured KAT hashes and any notable observations recorded.)_
