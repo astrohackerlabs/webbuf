@@ -4,7 +4,7 @@ description = "Blake3 hash function for WebBuf with optional support for WASM."
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 repository = "https://github.com/identellica/webbuf"
 
 [lib]

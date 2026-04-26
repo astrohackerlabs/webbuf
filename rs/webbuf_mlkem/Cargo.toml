@@ -4,7 +4,7 @@ description = "ML-KEM (FIPS 203) post-quantum key encapsulation for WebBuf with 
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 repository = "https://github.com/identellica/webbuf"
 
 [lib]

@@ -37,7 +37,7 @@
     "rfc8032",
     "signature"
   ],
-  "author": "Identellica LLC",
+  "author": "Astrohacker",
   "license": "MIT",
   "peerDependencies": {
     "@webbuf/ed25519": "workspace:^",

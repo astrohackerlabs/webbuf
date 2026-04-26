@@ -37,7 +37,7 @@
     "rust",
     "wasm"
   ],
-  "author": "Identellica LLC",
+  "author": "Astrohacker",
   "license": "MIT",
   "peerDependencies": {
     "@webbuf/acs2": "workspace:^",

@@ -4,7 +4,7 @@ description = "SHA-256 hash and HMAC-SHA256 for WebBuf with optional support for
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 repository = "https://github.com/identellica/webbuf"
 
 [lib]

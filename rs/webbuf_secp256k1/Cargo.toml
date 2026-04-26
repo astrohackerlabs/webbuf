@@ -4,7 +4,7 @@ description = "Rust WASM elliptic curve secp256k1 for digital signatures and Dif
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 repository = "https://github.com/identellica/webbuf"
 
 [lib]

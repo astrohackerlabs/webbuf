@@ -2,7 +2,7 @@
 name = "webbuf"
 version.workspace = true
 edition = "2021"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 description = "A Rust library for fast base64 and hex encoding/decoding"
 license = "MIT"
 repository = "https://github.com/identellica/webbuf"

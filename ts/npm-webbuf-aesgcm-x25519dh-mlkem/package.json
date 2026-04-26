@@ -38,7 +38,7 @@
     "encryption",
     "aead"
   ],
-  "author": "Identellica LLC",
+  "author": "Astrohacker",
   "license": "MIT",
   "peerDependencies": {
     "@webbuf/aesgcm": "workspace:^",

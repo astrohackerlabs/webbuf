@@ -262,7 +262,7 @@ description = "<Description>"
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 repository = "https://github.com/identellica/webbuf"
 
 [lib]

@@ -4,7 +4,7 @@ description = "X25519 ECDH (RFC 7748) for WebBuf with optional WASM support."
 version.workspace = true
 edition = "2021"
 license = "MIT"
-authors = ["Identellica LLC"]
+authors = ["Astrohacker"]
 repository = "https://github.com/identellica/webbuf"
 
 [lib]
