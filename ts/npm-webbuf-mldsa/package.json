@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/mldsa",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "description": "Rust/wasm ML-DSA (FIPS 204) post-quantum digital signatures for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",

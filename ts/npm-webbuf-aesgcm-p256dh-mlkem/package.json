@@ -1,6 +1,6 @@
 {
   "name": "@webbuf/aesgcm-p256dh-mlkem",
-  "version": "3.7.0",
+  "version": "3.8.0",
   "description": "Hybrid AES-256-GCM with P-256 ECDH + ML-KEM-768: classical + post-quantum authenticated encryption for the web, node.js, deno, and bun.",
   "repository": {
     "type": "git",
