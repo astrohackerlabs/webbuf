@@ -197,7 +197,11 @@ who fully breaks ML-DSA still has to break Ed25519, and vice versa.
   rejection, non-determinism of the default sign with Ed25519-half stability,
   and the strict-Ed25519 universal-forgery rejection inherited from the
   Experiment 3 Codex fix.
-- Audit test asserting the byte-precise issue 0007 Experiment 5 KAT.
+- 5 audit tests asserting the byte-precise issue 0007 Experiment 5 KAT: Ed25519
+  public-key derivation, ML-DSA-65 verifying-key SHA-256 match,
+  composite-signature SHA-256 (`401a517c…47158c53`), wire-format prefix bytes
+  (version 0x01 + Ed25519 half + ML-DSA prefix), and end-to-end verification of
+  the captured signature.
 
 ```bash
 pnpm test
