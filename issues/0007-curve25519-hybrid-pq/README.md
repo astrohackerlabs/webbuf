@@ -788,3 +788,362 @@ wasm = ["wasm-bindgen"]
 
 The next experiment will build `@webbuf/x25519` end-to-end against this
 pinned-dependency baseline.
+
+## Experiment 2: Build `@webbuf/x25519` end-to-end
+
+### Goal
+
+Ship the `@webbuf/x25519` package — Rust crate, WASM, TypeScript wrapper, tests,
+README — using the dependency pins from Experiment 1. After this experiment
+closes, the package can be imported and used by any consumer that needs raw RFC
+7748 X25519 ECDH.
+
+This is the smallest end-to-end build in the issue. It validates the
+dalek-cryptography pipeline against WebBuf's existing wasm-pack-bundler /
+inline-base64 / TypeScript-wrapper conventions before a second package
+(`@webbuf/ed25519` in the next experiment) leans on the same pattern, and before
+the hybrid encryption package (`@webbuf/aesgcm-x25519dh-mlkem` in a later
+experiment) leans on this primitive.
+
+### What this experiment delivers
+
+- A new Rust crate at `rs/webbuf_x25519/` with `Cargo.toml`, `src/lib.rs`,
+  `wasm-pack-bundler.zsh`, and `LICENSE`.
+- A new TypeScript package at `ts/npm-webbuf-x25519/` with `package.json`,
+  `tsconfig.json`, `tsconfig.build.json`, `vitest.config.ts`,
+  `build-inline-wasm.ts`, `src/index.ts`, `test/index.test.ts`,
+  `test/audit.test.ts`, `README.md`, and the inline-base64 / bundler WASM
+  artifact directories.
+- The Rust crate added to the `[workspace] members` list in `rs/Cargo.toml`.
+- The TypeScript package added to `pnpm-workspace.yaml` (if explicit enumeration
+  is used; if it's a glob, no change needed).
+- The umbrella `webbuf` package re-exporting the new functions from
+  `@webbuf/x25519`, with the dependency added to `ts/npm-webbuf/ package.json`.
+- Tests passing at every layer: `cargo test`, `vitest`, and umbrella typecheck +
+  build.
+
+### Public API
+
+The TypeScript surface mirrors the established `@webbuf/p256` shape:
+
+```typescript
+// ts/npm-webbuf-x25519/src/index.ts
+export function x25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32>;
+
+export function x25519SharedSecretRaw(
+  privKey: FixedBuf<32>,
+  pubKey: FixedBuf<32>,
+): FixedBuf<32>;
+```
+
+Both functions accept and return 32-byte `FixedBuf` values. **No `FixedBuf<33>`
+SEC1-compressed point shape** like P-256; X25519 public keys are 32-byte
+u-coordinates per RFC 7748 §5.
+
+`x25519SharedSecretRaw` **throws** if the resulting shared secret is the
+all-zero 32-byte value (i.e. `SharedSecret::was_contributory()` returns false).
+This is the conservative position pinned in the Decision Log: the primitive
+itself enforces, every consumer inherits the protection.
+
+#### Clamping behavior
+
+X25519 requires private-key bit-clamping per RFC 7748 §5 ("decodeScalar25519")
+before scalar multiplication. WebBuf's wrapper accepts any 32 raw bytes as the
+private key and applies clamping internally — matching what JS callers expect
+(they shouldn't have to know about clamping). This is already the behavior of
+`x25519-dalek::StaticSecret::from([u8; 32])` under the hood, which calls
+`clamp_integer` during the scalar-mult.
+
+The README will explicitly document this so consumers don't double-clamp or
+assume otherwise.
+
+### Rust crate
+
+```toml
+# rs/webbuf_x25519/Cargo.toml — pinned per Experiment 1's Result
+[package]
+name = "webbuf_x25519"
+description = "X25519 ECDH (RFC 7748) for WebBuf with optional WASM support."
+version.workspace = true
+edition = "2021"
+license = "MIT"
+authors = ["Identellica LLC"]
+repository = "https://github.com/identellica/webbuf"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+wasm = ["wasm-bindgen"]
+
+[dependencies]
+x25519-dalek = { version = "=2.0.1", default-features = false, features = [
+    "static_secrets",
+    "zeroize",
+    "precomputed-tables",
+] }
+curve25519-dalek = { version = "=4.1.3", default-features = false, features = [
+    "zeroize",
+    "precomputed-tables",
+] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+hex-literal = "0.4.1"
+hex = "0.4.3"
+```
+
+Rust API surface:
+
+```rust
+// rs/webbuf_x25519/src/lib.rs
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+use x25519_dalek::{PublicKey, StaticSecret};
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn x25519_public_key_create(priv_key: &[u8]) -> Result<Vec<u8>, String> {
+    let priv_arr: [u8; 32] = priv_key
+        .try_into()
+        .map_err(|_| "private key must be 32 bytes".to_string())?;
+    let secret = StaticSecret::from(priv_arr);
+    let public = PublicKey::from(&secret);
+    Ok(public.as_bytes().to_vec())
+}
+
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
+pub fn x25519_shared_secret_raw(
+    priv_key: &[u8],
+    pub_key: &[u8],
+) -> Result<Vec<u8>, String> {
+    let priv_arr: [u8; 32] = priv_key
+        .try_into()
+        .map_err(|_| "private key must be 32 bytes".to_string())?;
+    let pub_arr: [u8; 32] = pub_key
+        .try_into()
+        .map_err(|_| "public key must be 32 bytes".to_string())?;
+
+    let secret = StaticSecret::from(priv_arr);
+    let public = PublicKey::from(pub_arr);
+    let shared = secret.diffie_hellman(&public);
+
+    if !shared.was_contributory() {
+        return Err(
+            "X25519 shared secret is non-contributory (small-order public key)"
+                .to_string(),
+        );
+    }
+
+    Ok(shared.as_bytes().to_vec())
+}
+```
+
+#### Rust tests
+
+In `mod tests`, embedded vectors:
+
+1. **RFC 7748 §6.1 worked example.** Hard-coded Alice/Bob private and public
+   keys, expected shared secret. Asserts both `public_key_create` matches the
+   published public keys and `shared_secret_raw` matches the published shared
+   secret.
+2. **RFC 7748 §5.2 single-iteration vector.** The
+   `Input scalar / Input u-coordinate / Output u-coordinate` test vector.
+   Asserts the X25519 ladder produces the expected output for both directions.
+3. **Small-order rejection.** The seven small-order Curve25519 u-coordinates
+   from Cremers & Jackson, "Prime, Order Please!" 2019 (and Adam Langley's
+   curves-list notes), hard-coded as a slice. For each, assert
+   `x25519_shared_secret_raw` returns `Err(...non-contributory...)`. Use a
+   non-zero arbitrary private key for the local side.
+4. **Clamping invariance.** Generate two private keys that differ only in the
+   clamped bits (bit 0, 1, 2 of byte 0; bit 7 of byte 31; bit 6 of byte 31).
+   Confirm both produce the same public key — proves clamping is applied
+   internally and consumers don't need to pre-clamp.
+5. **Round-trip for random keys.** Use `hex_literal!`-canned bytes (no RNG dep)
+   for two arbitrary private keys; compute both public keys; compute both shared
+   secrets; assert equality. This is a smoke test of the full ECDH cycle
+   independent of the RFC vectors.
+
+#### `wasm-pack-bundler.zsh`
+
+Copy the `rs/webbuf_mlkem/wasm-pack-bundler.zsh` shape (it's the most recent /
+defensive form). The `rm -f` cleanup pattern handles missing files gracefully.
+
+### TypeScript package
+
+Layout copied from `ts/npm-webbuf-p256/`:
+
+```
+ts/npm-webbuf-x25519/
+├── package.json
+├── tsconfig.json
+├── tsconfig.build.json
+├── vitest.config.ts
+├── build-inline-wasm.ts
+├── README.md
+├── src/
+│   ├── index.ts
+│   ├── rs-webbuf_x25519-bundler/
+│   └── rs-webbuf_x25519-inline-base64/
+└── test/
+    ├── index.test.ts
+    └── audit.test.ts
+```
+
+`src/index.ts` skeleton:
+
+```typescript
+import { wasm } from "./rs-webbuf_x25519-inline-base64/webbuf_x25519.js";
+import { WebBuf } from "@webbuf/webbuf";
+import { FixedBuf } from "@webbuf/fixedbuf";
+
+export function x25519PublicKeyCreate(privKey: FixedBuf<32>): FixedBuf<32> {
+  const pub = wasm.x25519_public_key_create(privKey.buf);
+  return FixedBuf.fromBuf(32, WebBuf.fromUint8Array(pub));
+}
+
+export function x25519SharedSecretRaw(
+  privKey: FixedBuf<32>,
+  pubKey: FixedBuf<32>,
+): FixedBuf<32> {
+  const ss = wasm.x25519_shared_secret_raw(privKey.buf, pubKey.buf);
+  return FixedBuf.fromBuf(32, WebBuf.fromUint8Array(ss));
+}
+```
+
+Rejected by Rust → throws across the WASM boundary → the TS wrapper re-throws as
+a regular `Error`. WebBuf's existing pattern (e.g. in `@webbuf/secp256k1`)
+already handles this; copy it verbatim.
+
+#### TypeScript tests
+
+`test/index.test.ts`:
+
+- Round-trip: random `privKey` (via `FixedBuf.fromRandom<32>(32)`) →
+  `x25519PublicKeyCreate(priv)` produces a 32-byte public key; both parties
+  compute matching shared secrets via `x25519SharedSecretRaw`.
+- Length invariants: public key and shared secret are exactly 32 bytes.
+- Fixed-keypair determinism: a hard-coded private key always produces the same
+  public key.
+- All-zero / small-order rejection: each of the seven small-order u-coordinates
+  from Cremers & Jackson causes `x25519SharedSecretRaw` to throw with the
+  contributory-check error.
+
+`test/audit.test.ts`:
+
+- RFC 7748 §6.1 byte-precise KAT: Alice's private key, Bob's private key
+  (hard-coded hex from the RFC), assert both public keys match the published
+  values and the shared secret matches.
+- RFC 7748 §5.2 single-iteration vector: input scalar + input u-coordinate
+  produce the expected output u-coordinate.
+
+Both tests use `hex` literals embedded in the test file; no fixture files.
+
+#### Package README
+
+Mirrors the `@webbuf/p256` README structure. Includes:
+
+- Brief description: "X25519 ECDH (RFC 7748) for WebBuf."
+- Usage example with `x25519PublicKeyCreate` and `x25519SharedSecretRaw`.
+- An explicit **Clamping** subsection: "Accepts any 32-byte private key.
+  Clamping per RFC 7748 §5 is applied internally — consumers don't need to
+  pre-clamp."
+- A **Small-order rejection** subsection: "`x25519SharedSecretRaw` throws if the
+  shared secret is non-contributory (i.e. the peer's public key is small-order).
+  This protects hybrid encryption schemes from being collapsed to PQ-only by a
+  malicious peer's small-order public key."
+- An **Audit posture** subsection using the verifiable-fact wording drafted in
+  Experiment 1's A6: Quarkslab 2019 covered pre-1.0; current 4.x / 2.x lines not
+  under that audit; RUSTSEC-2024-0344 fix included via the pinned
+  `curve25519-dalek = "=4.1.3"`.
+
+### Umbrella `webbuf` package
+
+After the new package builds cleanly, add it to the umbrella:
+
+- `ts/npm-webbuf/package.json`: add `"@webbuf/x25519": "workspace:^"` to
+  dependencies.
+- `ts/npm-webbuf/src/index.ts`: re-export `x25519PublicKeyCreate`,
+  `x25519SharedSecretRaw` alongside the existing primitives.
+- Run `pnpm install`, `pnpm run typecheck`, `pnpm run build:typescript` in the
+  umbrella to confirm clean.
+
+### Risks
+
+1. **`StaticSecret::from([u8; 32])` clamping behavior.** I've stated it clamps
+   internally based on docs.rs. Verify in Rust with the "Clamping invariance"
+   test; if dalek's behavior differs from what's documented, the test fails fast
+   and I revisit before shipping.
+2. **`was_contributory()` semantics on edge inputs.** It detects the all-zero
+   shared secret per RFC 7748 §6.1, but I should confirm it triggers for **all
+   seven** small-order u-coordinates in Cremers & Jackson's list — some might
+   produce non-zero (but non-secret) shared secrets. If `was_contributory()`
+   only catches a subset, the primitive needs an additional explicit check on
+   the `as_bytes()` output. The Rust small-order test will surface this
+   empirically.
+3. **`getrandom` sneaking in.** Experiment 1 confirmed neither crate pulls
+   `getrandom` under the chosen feature set. Verify by inspecting `Cargo.lock`
+   after `cargo build` — if `getrandom` appears for `webbuf_x25519`, something's
+   misconfigured.
+4. **WASM binary size.** `precomputed-tables` is on. The base64-inline WASM may
+   be larger than `webbuf_p256`. Measure after build; if it doubles or worse,
+   consider disabling `precomputed-tables` and re-evaluate. Defer the decision
+   to actual measurement.
+5. **TS-side error message stability.** Rust's `Err(String)` becomes a
+   `wasm-bindgen` thrown JS error. The exact error message text on the
+   small-order-rejection path becomes a test assertion. Keep the wording stable
+   so audit tests don't churn — pick a message in Rust now and don't change it
+   later without intent.
+6. **The `version.workspace = true` precedent.** The Rust workspace version
+   bumps when a release is cut. `webbuf_x25519` will inherit the next bump
+   (0.16.0 or whatever is chosen). No special handling needed — same pattern as
+   every other crate.
+
+### Out of scope for this experiment
+
+- `@webbuf/ed25519` — Experiment 3.
+- `@webbuf/aesgcm-x25519dh-mlkem` (hybrid encryption) — a later experiment.
+- Composite Ed25519 + ML-DSA-65 signature package — last experiment in the
+  issue.
+- Updating the existing `@webbuf/aesgcm-p256dh-mlkem` README to cross-link to
+  `@webbuf/aesgcm-x25519dh-mlkem` — happens when the hybrid package lands.
+- Empirical `precomputed-tables` size/perf measurement that would decide whether
+  to ship without it. Measure now, defer the decision unless the size is
+  unacceptable.
+- Version bumps on any package. The user is doing the bump pass separately.
+- Web Crypto interop helpers (the way `@webbuf/p256` exposes
+  `p256PrivKeyToWebCryptoEcKey` / `p256PubKeyFromWebCrypto`). X25519 is
+  supported in browsers via `crypto.subtle.importKey({ name: "X25519" })` but
+  the API surface is different from P-256 ECDSA's; punt unless KeyPears asks for
+  it.
+
+### Success criteria
+
+- `cargo build -p webbuf_x25519` clean.
+- `cargo test -p webbuf_x25519 --release` all pass: RFC 7748 §6.1 + §5.2
+  vectors, small-order rejection (seven points), clamping invariance,
+  round-trip.
+- `./wasm-pack-bundler.zsh` produces a clean `build/bundler/`.
+- `pnpm install` in `ts/` resolves the new package.
+- `pnpm run sync:from-rust && pnpm run build:wasm` in `ts/npm-webbuf-x25519`
+  produces clean inline-base64 artifacts.
+- `pnpm run typecheck` clean.
+- `pnpm test` in `ts/npm-webbuf-x25519` all pass: round-trip, length invariants,
+  deterministic public-key derivation, all-seven small-order rejections, RFC
+  7748 §6.1 audit KAT, RFC 7748 §5.2 ladder vector.
+- Umbrella `ts/npm-webbuf/`: `pnpm run typecheck` and
+  `pnpm run build:typescript` clean after the re-export is added.
+- `cat rs/Cargo.lock | grep getrandom` returns no `webbuf_x25519` dep-tree entry
+  (verifies the Experiment 1 promise of no `getrandom` in the WASM-bound graph).
+- Inline-base64 WASM size measured and noted in the **Result** section. If it's
+  grossly larger than `@webbuf/p256`, document the trade-off and decide whether
+  to ship as-is or disable `precomputed-tables`.
+
+### Implementation
+
+_(To be filled in when the experiment is run.)_
+
+### Result
+
+_(To be filled in. Mark **Result: Pass** once the success-criteria checks all
+green, with notable observations — the small-order test outcome, the WASM size,
+any feature-flag adjustments — recorded.)_
